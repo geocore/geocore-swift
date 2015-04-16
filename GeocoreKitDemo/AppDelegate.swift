@@ -7,7 +7,13 @@
 //
 
 import UIKit
+import PromiseKit
 import GeocoreKit
+
+private let GEOCORE_BASEURL = "http://put.geocore.api.server.url.here"
+private let GEOCORE_PROJECTID = "#PUT_PROJECT_ID_HERE#"
+private let GEOCORE_USERID = "#PUT_USER_ID_HERE#"
+private let GEOCORE_USERPASSWORD = "#PUT_USER_PASSWORD_HERE#"
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -17,7 +23,52 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         
-        println(Geocore.sharedInstance.hello())
+        /*
+        Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD) { (optToken, optError) -> Void in
+                if let token = optToken {
+                    println("Access Token = \(token)")
+                    GeocoreObject.get(GEOCORE_USERID, callback: { (optObj, optError) -> Void in
+                        if let obj = optObj {
+                            println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.description!)")
+                            GeocorePlace.get() { (optPlaces, optError) -> Void in
+                                if let places = optPlaces {
+                                    for place in places {
+                                        println("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
+                                    }
+                                } else {
+                                    println(optError)
+                                }
+                            }
+                        } else {
+                            println(optError)
+                        }
+                    })
+                } else {
+                    println(optError)
+                }
+            }
+        */
+    
+        Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { (accessToken: String) -> Promise<GeocoreObject> in
+                println("Access Token = \(accessToken)")
+                return GeocoreObject.get(GEOCORE_USERID)
+            }
+            .then { (obj: GeocoreObject) -> Promise<[GeocorePlace]> in
+                println("--- The object as promised:")
+                println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.description!)")
+                return GeocorePlace.get()
+            }
+            .then { (places: [GeocorePlace]) -> Void in
+                println("--- Some places as promised:")
+                for place in places {
+                    println("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
+                }
+            }
         
         return true
     }
