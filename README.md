@@ -1,8 +1,8 @@
 # GeocoreKit
 
-**This is a very early version that is not very useful except for some very basic operations.**
+**This is a very early version that is not really useful except for some basic operations.**
 
-GeocoreKit is pure Swift framework for accessing Geocore API server.
+GeocoreKit is a pure Swift framework for accessing Geocore API server.
 
 ## Installation
 
@@ -11,7 +11,7 @@ it using CocoaPods simply add the following line to your Podfile:
 ```
 pod "GeocoreKit"
 ```
-To install it using Carthage, add following line to your Cartfile:
+To install it using Carthage, add the following line to your Cartfile:
 ```
 github "geocore/geocore-swift"
 ```

@@ -26,6 +26,10 @@ public protocol GeocoreInitializableFromJSON {
     init(json: JSON)
 }
 
+public protocol GeocoreSerializableToJSON {
+    func toDictionary() -> [String: AnyObject]
+}
+
 public class GeocoreGenericResult: GeocoreInitializableFromJSON {
     var json: JSON
     
@@ -75,15 +79,66 @@ public class Geocore: NSObject {
         }
     }
     
-    private func requestBuilder(method: Alamofire.Method, parameters: [String: AnyObject]? = nil) -> ((String) -> Request) {
+    // from Alamofire internal
+    func escape(string: String) -> String {
+        let legalURLCharactersToBeEscaped: CFStringRef = ":&=;+!@#$()',*"
+        return CFURLCreateStringByAddingPercentEscapes(nil, string, nil, legalURLCharactersToBeEscaped, CFStringBuiltInEncodings.UTF8.rawValue) as String
+    }
+    
+    // from Alamofire internal
+    func queryComponents(key: String, _ value: AnyObject) -> [(String, String)] {
+        var components: [(String, String)] = []
+        if let dictionary = value as? [String: AnyObject] {
+            for (nestedKey, value) in dictionary {
+                components += queryComponents("\(key)[\(nestedKey)]", value)
+            }
+        } else if let array = value as? [AnyObject] {
+            for value in array {
+                components += queryComponents("\(key)[]", value)
+            }
+        } else {
+            components.extend([(escape(key), escape("\(value)"))])
+        }
+        
+        return components
+    }
+    
+    /**
+        Build and customize Alamofire request with Geocore token and optional parameter/body specification.
+     */
+    private func requestBuilder(method: Alamofire.Method, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> ((String) -> Request) {
         if let token = self.token {
             // if token is available (user already logged-in), use NSMutableURLRequest to customize HTTP header
             return { (path: String) -> Request in
-                return Alamofire.request(
-                    self.parameterEncoding(method).encode(
-                        // NSMutableURLRequest with customized HTTP header
-                        self.mutableURLRequest(method, path: path, token: token),
-                        parameters: parameters).0)
+                // NSMutableURLRequest with customized HTTP header
+                var mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
+                if let someParameters = parameters, someBody = body {
+                    
+                    // from Alamofire internal
+                    func query(parameters: [String: AnyObject]) -> String {
+                        var components: [(String, String)] = []
+                        for key in sorted(Array(parameters.keys), <) {
+                            let value: AnyObject! = parameters[key]
+                            components += self.queryComponents(key, value)
+                        }
+                        
+                        return join("&", components.map{"\($0)=\($1)"} as [String])
+                    }
+                    
+                    // since we have both non-nil parameters and body, 
+                    // the parameters should go to URL query parameters, 
+                    // and the body should go to HTTP body
+                    if let URLComponents = NSURLComponents(URL: mutableURLRequest.URL!, resolvingAgainstBaseURL: false) {
+                        URLComponents.percentEncodedQuery = (URLComponents.percentEncodedQuery != nil ? URLComponents.percentEncodedQuery! + "&" : "") + query(someParameters)
+                        mutableURLRequest.URL = URLComponents.URL
+                    }
+                    
+                    // pass body to be processed by Alamofire
+                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: someBody).0)
+                } else {
+                    // set parameters according to standard Alamofire's encode processing
+                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: parameters).0)
+                }
             }
         } else {
             // otherwise do a normal Alamofire request
@@ -214,8 +269,27 @@ public class Geocore: NSObject {
     /**
         Do an HTTP POST request expecting one result of type T
      */
-    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (T?, NSError?) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters), callback: callback)
+    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (T?, NSError?) -> Void) {
+        self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
+    }
+    
+    /**
+        Promise a single result of type T from an HTTP POST request.
+     */
+    func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<T> {
+        return Promise { (fulfiller, rejecter) in
+            self.POST(path, parameters: parameters, body: body) { (optObj: T?, optError: NSError?) -> Void in
+                if let obj = optObj {
+                    fulfiller(obj)
+                } else {
+                    if let error = optError {
+                        rejecter(error)
+                    } else {
+                        rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_STATE.rawValue, userInfo: nil))
+                    }
+                }
+            }
+        }
     }
     
     /**

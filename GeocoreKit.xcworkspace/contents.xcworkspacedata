@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:GeocoreKit.playground">
+   </FileRef>
+   <FileRef
       location = "group:GeocoreKit.xcodeproj">
    </FileRef>
    <FileRef
