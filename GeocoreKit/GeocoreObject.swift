@@ -37,6 +37,13 @@ public class GeocoreTagParameters: GeocoreSerializableToJSON {
         return dict
     }
     
+    /**
+    Set tag IDs to be submitted as request parameter.
+    
+    :param: tagIds Tag IDs to be submitted
+    
+    :returns: Parameter object to be chain-called.
+    */
     public func tagIds(tagIds: [String]) -> GeocoreTagParameters {
         self.tagIds = tagIds
         return self
@@ -60,7 +67,7 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
     public init() {
     }
     
-    public required init(json: JSON) {
+    public required init(_ json: JSON) {
         self.sid = json["sid"].int64
         self.id = json["id"].string
         self.name = json["name"].string
@@ -79,7 +86,7 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
     
     // MARK: Callback version
     
-    public class func get(id: String, callback: (GeocoreObject?, NSError?) -> Void) {
+    public class func get(id: String, callback: (GeocoreResult<GeocoreObject>) -> Void) {
         Geocore.sharedInstance.GET("/objs/\(id)", callback: callback)
     }
     
@@ -105,9 +112,9 @@ public class GeocoreTag: GeocoreObject {
         super.init()
     }
     
-    public required init(json: JSON) {
+    public required init(_ json: JSON) {
         if let type = json["type"].string { self.type = GeocoreTagType(rawValue: type) }
-        super.init(json: json)
+        super.init(json)
     }
     
     public override func toDictionary() -> [String : AnyObject] {
@@ -131,11 +138,11 @@ public class GeocoreTaggable: GeocoreObject {
         super.init()
     }
     
-    public required init(json: JSON) {
+    public required init(_ json: JSON) {
         if let tagsJSON = json["tags"].array {
-            self.tags = tagsJSON.map({ GeocoreTag(json: $0) })
+            self.tags = tagsJSON.map({ GeocoreTag($0) })
         }
-        super.init(json: json)
+        super.init(json)
     }
     
     public override func toDictionary() -> [String : AnyObject] {
@@ -191,14 +198,14 @@ public class GeocorePlace: GeocoreTaggable {
         super.init()
     }
     
-    public required init(json: JSON) {
+    public required init(_ json: JSON) {
         self.shortName = json["shortName"].string
         self.shortDescription = json["shortDescription"].string
         self.point = GeocorePoint(
             latitude: json["point"]["latitude"].float,
             longitude: json["point"]["longitude"].float)
         self.distanceLimit = json["distanceLimit"].float
-        super.init(json: json)
+        super.init(json)
     }
     
     public override func toDictionary() -> [String : AnyObject] {
@@ -222,7 +229,7 @@ public class GeocorePlace: GeocoreTaggable {
     
     // MARK: Callback version
     
-    public func save(callback: (GeocorePlace?, NSError?) -> Void) {
+    public func save(callback: (GeocoreResult<GeocorePlace>) -> Void) {
         if let params = resolveTagParameters() {
             Geocore.sharedInstance.POST(savePath(), parameters: params.toDictionary(), body: self.toDictionary(), callback: callback)
         } else {
@@ -230,17 +237,11 @@ public class GeocorePlace: GeocoreTaggable {
         }
     }
     
-    /*
-    public func save(tags: GeocoreTagParameters, callback: (GeocorePlace?, NSError?) -> Void) {
-        Geocore.sharedInstance.POST(savePath(), parameters: tags.toDictionary(), body: self.toDictionary(), callback: callback)
-    }
-    */
-    
-    public override class func get(id: String, callback: (GeocorePlace?, NSError?) -> Void) {
+    public class func get(id: String, callback: (GeocoreResult<GeocorePlace>) -> Void) {
         Geocore.sharedInstance.GET("/places/\(id)", callback: callback)
     }
     
-    public class func get(callback: ([GeocorePlace]?, NSError?) -> Void) {
+    public class func get(callback: (GeocoreResult<[GeocorePlace]>) -> Void) {
         Geocore.sharedInstance.GET("/places", callback: callback)
     }
     
@@ -253,12 +254,6 @@ public class GeocorePlace: GeocoreTaggable {
             return Geocore.sharedInstance.promisedPOST(savePath(), parameters: self.toDictionary())
         }
     }
-    
-    /*
-    public func save(tags: GeocoreTagParameters) -> Promise<GeocorePlace> {
-        return Geocore.sharedInstance.promisedPOST(savePath(), parameters: tags.toDictionary(), body: self.toDictionary())
-    }
-    */
     
     public class func get(id: String) -> Promise<GeocorePlace> {
         return Geocore.sharedInstance.promisedGET("/places/\(id)")

@@ -11,9 +11,22 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
+/**
+    GeocoreKit error domain.
+*/
 public let GeocoreErrorDomain = "jp.geocore.error"
+
 private let HTTPHEADER_ACCESS_TOKEN_NAME = "Geocore-Access-Token"
 
+/**
+    GeocoreKit error code.
+
+    - INVALID_STATE:           Unexpected internal state. Possibly a bug.
+    - INVALID_SERVER_RESPONSE: Unexpected server response. Possibly a bug.
+    - SERVER_ERROR:            Server returns an error.
+    - TOKEN_UNDEFINED:         Token is unavailable. Possibly the library is left uninitialized or user is not logged in.
+    - UNAUTHORIZED_ACCESS:     Access to the specified resource is forbidden. Possibly the user is not logged in.
+*/
 public enum GeocoreError: Int {
     case INVALID_STATE
     case INVALID_SERVER_RESPONSE
@@ -23,7 +36,7 @@ public enum GeocoreError: Int {
 }
 
 public protocol GeocoreInitializableFromJSON {
-    init(json: JSON)
+    init(_ json: JSON)
 }
 
 public protocol GeocoreSerializableToJSON {
@@ -33,13 +46,78 @@ public protocol GeocoreSerializableToJSON {
 public class GeocoreGenericResult: GeocoreInitializableFromJSON {
     var json: JSON
     
-    public required init(json: JSON) {
+    public required init(_ json: JSON) {
         self.json = json
     }
 }
 
+// Work-around for Swift compiler unimplemented feature error: 'unimplemented IR generation feature non-fixed multi-payload enum layout'
+// see:
+// http://owensd.io/2014/07/09/error-handling.html
+// https://github.com/owensd/SwiftLib/blob/master/Source/Failable.swift
+// ultimately this wrapper will not be necessary once the compiler is fixed.
+public class GeocoreResultValueWrapper<T> {
+    let value: T
+    public init(_ value: T) { self.value = value }
+}
+
+public enum GeocoreResult<T> {
+    case Success(GeocoreResultValueWrapper<T>)
+    case Failure(NSError)
+    
+    public init(_ value: T) {
+        self = .Success(GeocoreResultValueWrapper(value))
+    }
+    
+    public init(_ error: NSError) {
+        self = .Failure(error)
+    }
+    
+    public var failed: Bool {
+        switch self {
+        case .Failure(let error):
+            return true
+            
+        default:
+            return false
+        }
+    }
+    
+    public var error: NSError? {
+        switch self {
+        case .Failure(let error):
+            return error
+            
+        default:
+            return nil
+        }
+    }
+    
+    public var value: T? {
+        switch self {
+        case .Success(let wrapper):
+            return wrapper.value
+        default:
+            return nil
+        }
+    }
+    
+    public func propagateTo(fulfiller: (T) -> Void, rejecter: (NSError) -> Void) -> Void {
+        switch self {
+        case .Success(let wrapper):
+            fulfiller(wrapper.value)
+        case .Failure(let error):
+            rejecter(error)
+        }
+    }
+}
+
+/**
+ *  Main singleton class.
+ */
 public class Geocore: NSObject {
     
+    /// Singleton instance
     public static let sharedInstance = Geocore()
     
     public private(set) var baseURL: String?
@@ -49,6 +127,14 @@ public class Geocore: NSObject {
     private override init() {
     }
     
+    /**
+        Setting up the library.
+    
+        :param: baseURL   Geocore server endpoint
+        :param: projectId Project ID
+    
+        :returns: Geocore object
+    */
     public func setup(baseURL: String, projectId: String) -> Geocore {
         self.baseURL = baseURL;
         self.projectId = projectId;
@@ -161,6 +247,7 @@ public class Geocore: NSObject {
             onError: (NSError) -> Void) {
         requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
             if let error = optError {
+                println("[ERROR] \(error)")
                 onError(error)
             } else if let data = optData as? NSData {
                 if let statusCode = res?.statusCode {
@@ -186,38 +273,41 @@ public class Geocore: NSObject {
                     // TODO: should specify the error futher in userInfo
                     onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: nil))
                 }
+            } else {
+                println("[ERROR] Unexpected data: \(optData)")
             }
         }
     }
     
+    
     /**
         Request resulting a single result of type T.
      */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: (T?, NSError?) -> Void) {
+    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: (GeocoreResult<T>) -> Void) {
         self.request(path, requestBuilder: requestBuilder,
-            onSuccess: { (json: JSON) -> Void in callback(T(json: json), nil) },
-            onError: { (error: NSError) -> Void in callback(nil, error) })
+            onSuccess: { (json: JSON) -> Void in callback(GeocoreResult(T(json))) },
+            onError: { (error: NSError) -> Void in callback(.Failure(error)) })
     }
     
     /**
         Request resulting multiple result in an array of objects of type T
      */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: ([T]?, NSError?) -> Void) {
+    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: (GeocoreResult<[T]>) -> Void) {
         self.request(path, requestBuilder: requestBuilder,
             onSuccess: { (json: JSON) -> Void in
                 if let result = json.array {
-                    callback(result.map { T(json: $0) }, nil)
+                    callback(GeocoreResult(result.map { T($0) }))
                 } else {
-                    callback([], nil)
+                    callback(GeocoreResult([]))
                 }
             },
-            onError: { (error: NSError) -> Void in callback(nil, error) })
+            onError: { (error: NSError) -> Void in callback(.Failure(error)) })
     }
     
     /**
         Do an HTTP GET request expecting one result of type T
      */
-    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (T?, NSError?) -> Void) {
+    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
         self.request(path, requestBuilder: self.requestBuilder(.GET, parameters: parameters), callback: callback)
     }
     
@@ -226,24 +316,17 @@ public class Geocore: NSObject {
      */
     func promisedGET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<T> {
         return Promise { (fulfiller, rejecter) in
-            self.GET(path, parameters: parameters) { (optObj: T?, optError: NSError?) -> Void in
-                if let obj = optObj {
-                    fulfiller(obj)
-                } else {
-                    if let error = optError {
-                        rejecter(error)
-                    } else {
-                        rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_STATE.rawValue, userInfo: nil))
-                    }
-                }
+            self.GET(path, parameters: parameters) { (result: GeocoreResult<T>) -> Void in
+                result.propagateTo(fulfiller, rejecter: rejecter)
             }
         }
     }
     
+    
     /**
         Do an HTTP GET request expecting an multiple result in an array of objects of type T
      */
-    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: ([T]?, NSError?) -> Void) {
+    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<[T]>) -> Void) {
         self.request(path, requestBuilder: self.requestBuilder(.GET, parameters: parameters), callback: callback)
     }
     
@@ -252,16 +335,8 @@ public class Geocore: NSObject {
      */
     func promisedGET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<[T]> {
         return Promise { (fulfiller, rejecter) in
-            self.GET(path, parameters: parameters) { (optObj: [T]?, optError: NSError?) -> Void in
-                if let obj = optObj {
-                    fulfiller(obj)
-                } else {
-                    if let error = optError {
-                        rejecter(error)
-                    } else {
-                        rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_STATE.rawValue, userInfo: nil))
-                    }
-                }
+            self.GET(path, parameters: parameters) { (result: GeocoreResult<[T]>) -> Void in
+                result.propagateTo(fulfiller, rejecter: rejecter)
             }
         }
     }
@@ -269,7 +344,7 @@ public class Geocore: NSObject {
     /**
         Do an HTTP POST request expecting one result of type T
      */
-    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (T?, NSError?) -> Void) {
+    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
         self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
     }
     
@@ -278,45 +353,44 @@ public class Geocore: NSObject {
      */
     func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<T> {
         return Promise { (fulfiller, rejecter) in
-            self.POST(path, parameters: parameters, body: body) { (optObj: T?, optError: NSError?) -> Void in
-                if let obj = optObj {
-                    fulfiller(obj)
-                } else {
-                    if let error = optError {
-                        rejecter(error)
-                    } else {
-                        rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_STATE.rawValue, userInfo: nil))
-                    }
-                }
+            self.POST(path, parameters: parameters, body: body) { (result: GeocoreResult<T>) -> Void in
+                result.propagateTo(fulfiller, rejecter: rejecter)
             }
         }
     }
     
+    
     /**
         Login to Geocore with callback.
      */
-    public func login(userId: String, password: String, callback:(String?, NSError?) -> Void) {
-        self.POST("/auth", parameters: ["id": userId, "password": password, "project_id": self.projectId!]) { (optResult: GeocoreGenericResult?, error: NSError?) -> Void in
-            if let result = optResult {
-                self.token = result.json["token"].string
-                callback(self.token, nil)
-            } else {
-                callback(nil, error)
+    public func login(userId: String, password: String, callback:(GeocoreResult<String>) -> Void) {
+        self.POST("/auth", parameters: ["id": userId, "password": password, "project_id": self.projectId!]) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
+            switch result {
+                case .Success(let wrapper):
+                    self.token = wrapper.value.json["token"].string
+                    if let token = self.token {
+                        callback(GeocoreResult(token))
+                    } else {
+                        callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_STATE.rawValue, userInfo: nil)))
+                    }
+                case .Failure(let error):
+                    callback(.Failure(error))
             }
         }
     }
     
     /**
         Login to Geocore with promise.
+    
+        :param: userId   User's ID to be submitted
+        :param: password Password for authorizing user
+    
+        :returns: Promise for Geocore Access Token (as String)
      */
     public func login(userId: String, password: String) -> Promise<String> {
         return Promise { (fulfiller, rejecter) in
-            self.login(userId, password: password, callback: { (optToken, optError) -> Void in
-                if let error = optError {
-                    rejecter(error)
-                } else {
-                    fulfiller(optToken!)
-                }
+            self.login(userId, password: password, callback: { (result: GeocoreResult<String>) -> Void in
+                result.propagateTo(fulfiller, rejecter: rejecter)
             })
         }
     }

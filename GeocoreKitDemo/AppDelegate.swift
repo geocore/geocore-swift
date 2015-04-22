@@ -25,33 +25,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         /*
         Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
-            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD) { (optToken, optError) -> Void in
-                if let token = optToken {
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD) { (result: GeocoreResult<String>) -> Void in
+                if let token = result.value {
                     println("Access Token = \(token)")
-                    GeocoreObject.get(GEOCORE_USERID, callback: { (optObj, optError) -> Void in
-                        if let obj = optObj {
+                    GeocoreObject.get(GEOCORE_USERID, callback: { (result: GeocoreResult<GeocoreObject>) -> Void in
+                        if let obj = result.value {
                             println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.desc!)")
-                            GeocorePlace.get() { (optPlaces, optError) -> Void in
-                                if let places = optPlaces {
+                            GeocorePlace.get() { (result: GeocoreResult<[GeocorePlace]>) -> Void in
+                                if let places = result.value {
                                     for place in places {
                                         println("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
                                     }
                                 } else {
-                                    println(optError)
+                                    println(result.error)
                                 }
                             }
                         } else {
-                            println(optError)
+                            println(result.error)
                         }
                     })
                 } else {
-                    println(optError)
+                    println(result.error)
                 }
             }
         */
-    
-        /*
-        Geocore.sharedInstance
+        
+        let _:() = Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
             .then { (accessToken: String) -> Promise<GeocoreObject> in
@@ -69,8 +68,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     println("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
                 }
             }
-        */
+            .catch { error -> Void in
+                println(error)
+            }
         
+        /*
         Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
@@ -95,6 +97,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .then { (place: GeocorePlace) -> Void in
                 println("Place with Sid = \(place.sid) updated, now the Name = \(place.name)")
             }
+        */
         
         return true
     }
