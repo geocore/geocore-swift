@@ -26,6 +26,7 @@ private let HTTPHEADER_ACCESS_TOKEN_NAME = "Geocore-Access-Token"
     - SERVER_ERROR:            Server returns an error.
     - TOKEN_UNDEFINED:         Token is unavailable. Possibly the library is left uninitialized or user is not logged in.
     - UNAUTHORIZED_ACCESS:     Access to the specified resource is forbidden. Possibly the user is not logged in.
+    - INVALID_PARAMETER:       One of the parameter passed to the API is invalid
 */
 public enum GeocoreError: Int {
     case INVALID_STATE
@@ -33,6 +34,7 @@ public enum GeocoreError: Int {
     case SERVER_ERROR
     case TOKEN_UNDEFINED
     case UNAUTHORIZED_ACCESS
+    case INVALID_PARAMETER
 }
 
 public protocol GeocoreInitializableFromJSON {
@@ -258,8 +260,15 @@ public class Geocore: NSObject {
                             if status == "success" {
                                 onSuccess(json["result"])
                             } else {
-                                // TODO: should pass along server error as userInfo
-                                onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.SERVER_ERROR.rawValue, userInfo: nil))
+                                // pass on server error info as userInfo
+                                onError(
+                                    NSError(
+                                        domain: GeocoreErrorDomain,
+                                        code: GeocoreError.SERVER_ERROR.rawValue,
+                                        userInfo: [
+                                            "code": json["code"].string ?? "",
+                                            "message": json["message"].string ?? ""
+                                        ]))
                             }
                         } else {
                             onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: nil))
@@ -322,7 +331,6 @@ public class Geocore: NSObject {
         }
     }
     
-    
     /**
         Do an HTTP GET request expecting an multiple result in an array of objects of type T
      */
@@ -359,6 +367,23 @@ public class Geocore: NSObject {
         }
     }
     
+    /**
+        Do an HTTP DELETE request expecting one result of type T
+     */
+    func DELETE<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
+        self.request(path, requestBuilder: self.requestBuilder(.DELETE, parameters: parameters), callback: callback)
+    }
+    
+    /**
+        Promise a single result of type T from an HTTP DELETE request.
+     */
+    func promisedDELETE<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<T> {
+        return Promise { (fulfiller, rejecter) in
+            self.DELETE(path, parameters: parameters) { (result: GeocoreResult<T>) -> Void in
+                result.propagateTo(fulfiller, rejecter: rejecter)
+            }
+        }
+    }
     
     /**
         Login to Geocore with callback.

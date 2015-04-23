@@ -10,7 +10,10 @@ import Foundation
 import SwiftyJSON
 import PromiseKit
 
-public struct GeocorePoint {
+/**
+    Geographical point in WGS84.
+ */
+public struct GeocorePoint: GeocoreSerializableToJSON {
     public var latitude: Float?
     public var longitude: Float?
     
@@ -21,8 +24,24 @@ public struct GeocorePoint {
         self.latitude = latitude
         self.longitude = longitude
     }
+    
+    public init(_ json: JSON) {
+        self.latitude = json["latitude"].float
+        self.longitude = json["longitude"].float
+    }
+    
+    public func toDictionary() -> [String: AnyObject] {
+        if let latitude = self.latitude, longitude = self.longitude {
+            return ["latitude": NSNumber(float: latitude), "longitude": NSNumber(float: longitude)]
+        } else {
+            return [String: AnyObject]()
+        }
+    }
 }
 
+/**
+    Tag related parameters to be submitted as part of a request.
+*/
 public class GeocoreTagParameters: GeocoreSerializableToJSON {
     private var tagIds: [String]?
     private var tagNames: [String]?
@@ -38,17 +57,24 @@ public class GeocoreTagParameters: GeocoreSerializableToJSON {
     }
     
     /**
-    Set tag IDs to be submitted as request parameter.
+        Set tag IDs to be submitted as request parameter.
     
-    :param: tagIds Tag IDs to be submitted
+        :param: tagIds Tag IDs to be submitted
     
-    :returns: Parameter object to be chain-called.
+        :returns: The updated parameter object to be chain-called.
     */
     public func tagIds(tagIds: [String]) -> GeocoreTagParameters {
         self.tagIds = tagIds
         return self
     }
+
+    /**
+        Set tag names to be submitted as request parameter.
     
+        :param: tagNames Tag names to be submitted
+    
+        :returns: The updated parameter object to be chain-called.
+    */
     public func tagNames(tagNames: [String]) -> GeocoreTagParameters {
         self.tagNames = tagNames
         return self
@@ -57,6 +83,9 @@ public class GeocoreTagParameters: GeocoreSerializableToJSON {
 
 // MARK: -
 
+/**
+    Base class of all objects managed by Geocore.
+ */
 public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJSON {
     
     public var sid: Int64?
@@ -90,10 +119,28 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
         Geocore.sharedInstance.GET("/objs/\(id)", callback: callback)
     }
     
+    func delete<T: GeocoreInitializableFromJSON>(path: String, callback: (GeocoreResult<T>) -> Void) {
+        if let sid = self.sid {
+            Geocore.sharedInstance.DELETE("\(path)/\(sid)", callback: callback)
+        } else {
+            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unsaved object cannot be deleted"])))
+        }
+    }
+    
     // MARK: Promise version
     
     public class func get(id: String) -> Promise<GeocoreObject> {
         return Geocore.sharedInstance.promisedGET("/objs/\(id)")
+    }
+    
+    func delete<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
+        if let sid = self.sid {
+            return Geocore.sharedInstance.promisedDELETE("\(path)/\(sid)")
+        } else {
+            return Promise { (fulfiller, rejecter) in
+                rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unsaved object cannot be deleted"]))
+            }
+        }
     }
 }
 
@@ -201,9 +248,7 @@ public class GeocorePlace: GeocoreTaggable {
     public required init(_ json: JSON) {
         self.shortName = json["shortName"].string
         self.shortDescription = json["shortDescription"].string
-        self.point = GeocorePoint(
-            latitude: json["point"]["latitude"].float,
-            longitude: json["point"]["longitude"].float)
+        self.point = GeocorePoint(json["point"])
         self.distanceLimit = json["distanceLimit"].float
         super.init(json)
     }
@@ -212,9 +257,7 @@ public class GeocorePlace: GeocoreTaggable {
         var dict = super.toDictionary()
         if let shortName = self.shortName { dict["shortName"] = shortName }
         if let shortDescription = self.shortDescription { dict["shortDescription"] = shortDescription }
-        if let latitude = self.point?.latitude, longitude = self.point?.longitude {
-            dict["point"] = ["latitude": NSNumber(float: latitude), "longitude": NSNumber(float: longitude)]
-        }
+        if let point = self.point { dict["point"] = point.toDictionary() }
         if let distanceLimit = self.distanceLimit { dict["distanceLimit"] = distanceLimit }
         return dict
     }
@@ -245,6 +288,10 @@ public class GeocorePlace: GeocoreTaggable {
         Geocore.sharedInstance.GET("/places", callback: callback)
     }
     
+    public func delete(callback: (GeocoreResult<GeocorePlace>) -> Void) {
+        super.delete("/places", callback: callback)
+    }
+    
     // MARK: Promise version
     
     public func save() -> Promise<GeocorePlace> {
@@ -261,6 +308,10 @@ public class GeocorePlace: GeocoreTaggable {
     
     public class func get() -> Promise<[GeocorePlace]> {
         return Geocore.sharedInstance.promisedGET("/places")
+    }
+    
+    public func delete() -> Promise<GeocorePlace> {
+        return super.delete("/places")
     }
     
 }

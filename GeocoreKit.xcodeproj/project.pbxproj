@@ -9,6 +9,15 @@
 /* Begin PBXBuildFile section */
 		A940C9071ADDF5CB006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
 		A940C90D1ADDF5E3006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C90A1ADDF5E3006B682F /* Alamofire.framework */; };
+		A99BF3471AE75A8E00658BDA /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
+		A99BF3491AE75A8E00658BDA /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */; };
+		A99BF34A1AE75A8E00658BDA /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9FC1CC61ADE2697004CCB3B /* SwiftyJSON.framework */; };
+		A99BF34B1AE7684400658BDA /* OMGHTTPURLRQ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24551ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework */; };
+		A99BF3511AE769C100658BDA /* Alamofire.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF34D1AE769C100658BDA /* Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A99BF3521AE769C100658BDA /* OMGHTTPURLRQ.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF34E1AE769C100658BDA /* OMGHTTPURLRQ.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A99BF3531AE769C100658BDA /* PromiseKit.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF34F1AE769C100658BDA /* PromiseKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A99BF3541AE769C100658BDA /* SwiftyJSON.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF3501AE769C100658BDA /* SwiftyJSON.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A99BF3571AE76CB800658BDA /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF3561AE76CB700658BDA /* AssetsLibrary.framework */; };
 		A9BD24571ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24551ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework */; };
 		A9BD24581ADE5A2900CDEE4C /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */; };
 		A9BD245B1ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24591ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework */; };
@@ -33,9 +42,31 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A99BF34C1AE7695C00658BDA /* Copy Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A99BF3511AE769C100658BDA /* Alamofire.framework in Copy Frameworks */,
+				A99BF3521AE769C100658BDA /* OMGHTTPURLRQ.framework in Copy Frameworks */,
+				A99BF3531AE769C100658BDA /* PromiseKit.framework in Copy Frameworks */,
+				A99BF3541AE769C100658BDA /* SwiftyJSON.framework in Copy Frameworks */,
+			);
+			name = "Copy Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		A940C9041ADDF5CB006B682F /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = Carthage/Build/iOS/Alamofire.framework; sourceTree = "<group>"; };
 		A940C90A1ADDF5E3006B682F /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = Carthage/Build/Mac/Alamofire.framework; sourceTree = "<group>"; };
+		A99BF34D1AE769C100658BDA /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = ../Carthage/Build/iOS/Alamofire.framework; sourceTree = "<group>"; };
+		A99BF34E1AE769C100658BDA /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = ../Carthage/Build/iOS/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
+		A99BF34F1AE769C100658BDA /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = ../Carthage/Build/iOS/PromiseKit.framework; sourceTree = "<group>"; };
+		A99BF3501AE769C100658BDA /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../Carthage/Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
+		A99BF3561AE76CB700658BDA /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.3.sdk/System/Library/Frameworks/AssetsLibrary.framework; sourceTree = DEVELOPER_DIR; };
 		A9BD24551ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = Carthage/Build/iOS/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
 		A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = "<group>"; };
 		A9BD24591ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = Carthage/Build/Mac/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
@@ -69,6 +100,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A99BF3571AE76CB800658BDA /* AssetsLibrary.framework in Frameworks */,
+				A99BF3471AE75A8E00658BDA /* Alamofire.framework in Frameworks */,
+				A99BF3491AE75A8E00658BDA /* PromiseKit.framework in Frameworks */,
+				A99BF34B1AE7684400658BDA /* OMGHTTPURLRQ.framework in Frameworks */,
+				A99BF34A1AE75A8E00658BDA /* SwiftyJSON.framework in Frameworks */,
 				A9E6808B1ADCF45F00FAE624 /* GeocoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -118,6 +154,18 @@
 			name = OSX;
 			sourceTree = "<group>";
 		};
+		A99BF3551AE769EB00658BDA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A99BF3561AE76CB700658BDA /* AssetsLibrary.framework */,
+				A99BF34D1AE769C100658BDA /* Alamofire.framework */,
+				A99BF34E1AE769C100658BDA /* OMGHTTPURLRQ.framework */,
+				A99BF34F1AE769C100658BDA /* PromiseKit.framework */,
+				A99BF3501AE769C100658BDA /* SwiftyJSON.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A9E680731ADCF43400FAE624 = {
 			isa = PBXGroup;
 			children = (
@@ -162,6 +210,7 @@
 			children = (
 				A9E680911ADCF45F00FAE624 /* GeocoreKitTests.swift */,
 				A9E6808F1ADCF45F00FAE624 /* Supporting Files */,
+				A99BF3551AE769EB00658BDA /* Frameworks */,
 			);
 			path = GeocoreKitTests;
 			sourceTree = "<group>";
@@ -220,6 +269,7 @@
 				A9E680861ADCF45F00FAE624 /* Sources */,
 				A9E680871ADCF45F00FAE624 /* Frameworks */,
 				A9E680881ADCF45F00FAE624 /* Resources */,
+				A99BF34C1AE7695C00658BDA /* Copy Frameworks */,
 			);
 			buildRules = (
 			);
@@ -501,6 +551,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -552,6 +603,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_NO_COMMON_BLOCKS = YES;

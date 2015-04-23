@@ -50,6 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         */
         
+        /*
         let _:() = Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
@@ -71,6 +72,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .catch { error -> Void in
                 println(error)
             }
+        */
         
         /*
         Geocore.sharedInstance
