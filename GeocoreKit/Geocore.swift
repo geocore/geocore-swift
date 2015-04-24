@@ -121,6 +121,7 @@ public class Geocore: NSObject {
     
     /// Singleton instance
     public static let sharedInstance = Geocore()
+    public static let geocoreDateFormatter = NSDateFormatter.dateFormatterForGeocore()
     
     public private(set) var baseURL: String?
     public private(set) var projectId: String?
@@ -158,6 +159,34 @@ public class Geocore: NSObject {
         return ret
     }
     
+    private func generateMultipartBoundaryConstant() -> String {
+        return NSString(format: "Boundary+%08X%08X", arc4random(), arc4random()) as String
+    }
+    
+    private func multipartURLRequest(method: Alamofire.Method, path: String, token: String, fieldName: String, fileName: String, mimeType: String, fileContents: NSData) -> NSMutableURLRequest {
+        
+        let mutableURLRequest = self.mutableURLRequest(.POST, path: path, token: token)
+        
+        let boundaryConstant = self.generateMultipartBoundaryConstant()
+        let boundaryStart = "--\(boundaryConstant)\r\n"
+        let boundaryEnd = "--\(boundaryConstant)--\r\n"
+        let contentDispositionString = "Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n"
+        let contentTypeString = "Content-Type: \(mimeType)\r\n\r\n"
+        
+        let requestBodyData : NSMutableData = NSMutableData()
+        requestBodyData.appendData(boundaryStart.dataUsingEncoding(NSUTF8StringEncoding)!)
+        requestBodyData.appendData(contentDispositionString.dataUsingEncoding(NSUTF8StringEncoding)!)
+        requestBodyData.appendData(contentTypeString.dataUsingEncoding(NSUTF8StringEncoding)!)
+        requestBodyData.appendData(fileContents)
+        requestBodyData.appendData("\r\n".dataUsingEncoding(NSUTF8StringEncoding)!)
+        requestBodyData.appendData(boundaryEnd.dataUsingEncoding(NSUTF8StringEncoding)!)
+        
+        mutableURLRequest.setValue("multipart/form-data; boundary=\(boundaryConstant)", forHTTPHeaderField: "Content-Type")
+        mutableURLRequest.HTTPBody = requestBodyData
+        
+        return mutableURLRequest
+    }
+    
     private func parameterEncoding(method: Alamofire.Method) -> Alamofire.ParameterEncoding {
         switch method {
         case .GET, .HEAD, .DELETE:
@@ -191,15 +220,56 @@ public class Geocore: NSObject {
         return components
     }
     
+    private func multipartInfo(_ body: [String: AnyObject]? = nil) -> (fileContents: NSData, fileName: String, fieldName: String, mimeType: String)? {
+        if let fileContents = body?["$fileContents"] as? NSData {
+            if let fileName = body?["$fileName"] as? String, fieldName = body?["$fieldName"] as? String, mimeType = body?["$mimeType"] as? String {
+                return (fileContents, fileName, fieldName, mimeType)
+            }
+        }
+        return nil
+    }
+    
+    private func validateRequestBody(_ body: [String: AnyObject]? = nil) -> Bool {
+        if let fileContent = body?["$fileContents"] as? NSData {
+            // uploading file, make sure all required parameters are specified as well
+            if let fileName = body?["$fileName"] as? String, fieldName = body?["$fieldName"] as? String, mimeType = body?["$mimeType"] as? String {
+                return true
+            } else {
+                return false
+            }
+        } else {
+            return true
+        }
+    }
+    
     /**
         Build and customize Alamofire request with Geocore token and optional parameter/body specification.
-     */
-    private func requestBuilder(method: Alamofire.Method, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> ((String) -> Request) {
+    
+        :param: method Alamofire Method enum representing HTTP request method
+        :param: parameters parameters to be used as URL query parameters (for GET, DELETE) or POST parameters in the body except is body parameter is not nil. For POST, ff body parameter is not nil it will be encoded as POST body (JSON or multipart) and parameters will become URL query parameters.
+        :param: body POST JSON or multipart content. For multipart content, the body will have to contain following key-values: ("$fileContents" => NSData), ("$fileName" => String), ("$fieldName" => String), ("$mimeType" => String)
+    
+        :returns: function that given a URL path will generate appropriate Alamofire Request object.
+    */
+    private func requestBuilder(method: Alamofire.Method, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> ((String) -> Request)? {
+        
+        if !self.validateRequestBody(body) {
+            return nil
+        }
+        
         if let token = self.token {
             // if token is available (user already logged-in), use NSMutableURLRequest to customize HTTP header
             return { (path: String) -> Request in
+                
                 // NSMutableURLRequest with customized HTTP header
-                var mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
+                var mutableURLRequest: NSMutableURLRequest
+                
+                if let multipartInfo = self.multipartInfo(body) {
+                    mutableURLRequest = self.multipartURLRequest(method, path: path, token: token, fieldName: multipartInfo.fieldName, fileName: multipartInfo.fileName, mimeType: multipartInfo.mimeType, fileContents: multipartInfo.fileContents)
+                } else {
+                    mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
+                }
+                
                 if let someParameters = parameters, someBody = body {
                     
                     // from Alamofire internal
@@ -288,29 +358,36 @@ public class Geocore: NSObject {
         }
     }
     
-    
     /**
         Request resulting a single result of type T.
      */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: (GeocoreResult<T>) -> Void) {
-        self.request(path, requestBuilder: requestBuilder,
-            onSuccess: { (json: JSON) -> Void in callback(GeocoreResult(T(json))) },
-            onError: { (error: NSError) -> Void in callback(.Failure(error)) })
+    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder optRequestBuilder: ((String) -> Request)?, callback: (GeocoreResult<T>) -> Void) {
+        if let requestBuilder = optRequestBuilder {
+            self.request(path, requestBuilder: requestBuilder,
+                onSuccess: { (json: JSON) -> Void in callback(GeocoreResult(T(json))) },
+                onError: { (error: NSError) -> Void in callback(.Failure(error)) })
+        } else {
+            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unable to build request, likely because of unexpected parameters."])))
+        }
     }
     
     /**
         Request resulting multiple result in an array of objects of type T
      */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder: (String) -> Request, callback: (GeocoreResult<[T]>) -> Void) {
-        self.request(path, requestBuilder: requestBuilder,
-            onSuccess: { (json: JSON) -> Void in
-                if let result = json.array {
-                    callback(GeocoreResult(result.map { T($0) }))
-                } else {
-                    callback(GeocoreResult([]))
-                }
-            },
-            onError: { (error: NSError) -> Void in callback(.Failure(error)) })
+    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder optRequestBuilder: ((String) -> Request)?, callback: (GeocoreResult<[T]>) -> Void) {
+        if let requestBuilder = optRequestBuilder {
+            self.request(path, requestBuilder: requestBuilder,
+                onSuccess: { (json: JSON) -> Void in
+                    if let result = json.array {
+                        callback(GeocoreResult(result.map { T($0) }))
+                    } else {
+                        callback(GeocoreResult([]))
+                    }
+                },
+                onError: { (error: NSError) -> Void in callback(.Failure(error)) })
+        } else {
+            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unable to build request, likely because of unexpected parameters."])))
+        }
     }
     
     /**
@@ -356,6 +433,10 @@ public class Geocore: NSObject {
         self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
     }
     
+    func uploadPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, fieldName: String, fileName: String, mimeType: String, fileContents: NSData, callback: (GeocoreResult<T>) -> Void) {
+        self.POST(path, parameters: parameters, body: ["$fileContents": fileContents, "$fileName": fileName, "$fieldName": fieldName, "$mimeType": mimeType], callback: callback)
+    }
+    
     /**
         Promise a single result of type T from an HTTP POST request.
      */
@@ -365,6 +446,10 @@ public class Geocore: NSObject {
                 result.propagateTo(fulfiller, rejecter: rejecter)
             }
         }
+    }
+    
+    func promisedUploadPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, fieldName: String, fileName: String, mimeType: String, fileContents: NSData) -> Promise<T> {
+        return self.promisedPOST(path, parameters: parameters, body: ["$fileContents": fileContents, "$fileName": fileName, "$fieldName": fieldName, "$mimeType": mimeType])
     }
     
     /**

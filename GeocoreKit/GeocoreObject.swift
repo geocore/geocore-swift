@@ -9,6 +9,7 @@
 import Foundation
 import SwiftyJSON
 import PromiseKit
+import Alamofire
 
 /**
     Geographical point in WGS84.
@@ -40,7 +41,7 @@ public struct GeocorePoint: GeocoreSerializableToJSON {
 }
 
 /**
-    Tag related parameters to be submitted as part of a request.
+    Tag-related parameters to be submitted as part of a request.
 */
 public class GeocoreTagParameters: GeocoreSerializableToJSON {
     private var tagIds: [String]?
@@ -81,10 +82,36 @@ public class GeocoreTagParameters: GeocoreSerializableToJSON {
     }
 }
 
+/**
+    Information about binary data uploads.
+ */
+public class GeocoreBinaryDataInfo: GeocoreInitializableFromJSON {
+    
+    private(set) public var key: String?
+    private(set) public var url: String?
+    private(set) public var contentLength: Int64?
+    private(set) public var contentType: String?
+    private(set) public var lastModified: NSDate?
+    
+    public required init(_ json: JSON) {
+        if json.type == .String {
+            self.key = json.string
+        } else {
+            self.key = json["key"].string
+            self.url = json["url"].string
+            self.contentLength = json["metadata"]["contentLength"].int64
+            self.contentType = json["metadata"]["contentType"].string
+            self.lastModified = NSDate.fromGeocoreFormattedString(json["metadata"]["lastModified"].string)
+        }
+    }
+    
+}
+
 // MARK: -
 
 /**
-    Base class of all objects managed by Geocore.
+    Base class of all objects managed by Geocore providing basic properties
+    and services.
  */
 public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJSON {
     
@@ -92,6 +119,12 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
     public var id: String?
     public var name: String?
     public var desc: String?
+    private(set) public var createTime: NSDate?
+    private(set) public var updateTime: NSDate?
+    private(set) public var upvotes: Int64?
+    private(set) public var downvotes: Int64?
+    public var customData: [String: String?]?
+    public var jsonData: JSON?
     
     public init() {
     }
@@ -101,6 +134,13 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
         self.id = json["id"].string
         self.name = json["name"].string
         self.desc = json["description"].string
+        self.createTime = NSDate.fromGeocoreFormattedString(json["createTime"].string)
+        self.updateTime = NSDate.fromGeocoreFormattedString(json["updateTime"].string)
+        self.upvotes = json["upvotes"].int64
+        self.downvotes = json["downvotes"].int64
+        self.customData = json["customData"].dictionary?.map { ($0, $1.string) }
+        self.jsonData = json["jsonData"]
+        if self.jsonData?.type == .Null { self.jsonData = nil }
     }
     
     public func toDictionary() -> [String: AnyObject] {
@@ -110,38 +150,89 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
         if let id = self.id { dict["id"] = id }
         if let name = self.name { dict["name"] = name }
         if let desc = self.desc { dict["description"] = desc }
+        if let customData = self.customData { dict["customData"] = customData.filter{ $1 != nil }.map{ ($0, $1!) } }
+        if let jsonData = self.jsonData { dict["jsonData"] = jsonData.rawString() }
         return dict
     }
     
     // MARK: Callback version
+    
+    private func doWithSid<T>(errorMessage: String, callback: (GeocoreResult<T>) -> Void, closure: (Int64)->Void) {
+        if let sid = self.sid {
+            closure(sid)
+        } else {
+            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": errorMessage])))
+        }
+    }
     
     public class func get(id: String, callback: (GeocoreResult<GeocoreObject>) -> Void) {
         Geocore.sharedInstance.GET("/objs/\(id)", callback: callback)
     }
     
     func delete<T: GeocoreInitializableFromJSON>(path: String, callback: (GeocoreResult<T>) -> Void) {
-        if let sid = self.sid {
-            Geocore.sharedInstance.DELETE("\(path)/\(sid)", callback: callback)
-        } else {
-            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unsaved object cannot be deleted"])))
+        self.doWithSid("Unsaved object cannot be deleted", callback: callback) { (sid) -> Void in
+            Geocore.sharedInstance.DELETE("/\(path)/\(sid)", callback: callback)
+        }
+    }
+    
+    public func upload(key: String, data: NSData, mimeType: String, callback: (GeocoreResult<GeocoreBinaryDataInfo>) -> Void) {
+        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
+            Geocore.sharedInstance.uploadPOST("/objs/\(sid)/bins/\(key)", parameters: nil, fieldName: "data", fileName: "data", mimeType: mimeType, fileContents: data, callback: callback)
+        }
+    }
+    
+    public func binaries(callback: (GeocoreResult<[GeocoreBinaryDataInfo]>) -> Void) {
+        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
+            Geocore.sharedInstance.GET("/objs/\(sid)/bins", parameters: nil, callback: callback)
+        }
+    }
+    
+    public func binary(key: String, callback: (GeocoreResult<GeocoreBinaryDataInfo>) -> Void) {
+        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
+            Geocore.sharedInstance.GET("/objs/\(sid)/bins/\(key)/url", parameters: nil, callback: callback)
         }
     }
     
     // MARK: Promise version
     
-    public class func get(id: String) -> Promise<GeocoreObject> {
-        return Geocore.sharedInstance.promisedGET("/objs/\(id)")
-    }
-    
-    func delete<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
+    private func doWithSid<T>(errorMessage: String, closure: (Int64)->Promise<T>) -> Promise<T> {
         if let sid = self.sid {
-            return Geocore.sharedInstance.promisedDELETE("\(path)/\(sid)")
+            return closure(sid)
         } else {
             return Promise { (fulfiller, rejecter) in
                 rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unsaved object cannot be deleted"]))
             }
         }
     }
+    
+    public class func get(id: String) -> Promise<GeocoreObject> {
+        return Geocore.sharedInstance.promisedGET("/objs/\(id)")
+    }
+    
+    func delete<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
+        return self.doWithSid("Unsaved object cannot be deleted") { (sid) -> Promise<T> in
+            return Geocore.sharedInstance.promisedDELETE("/\(path)/\(sid)")
+        }
+    }
+    
+    public func upload(key: String, data: NSData, mimeType: String) -> Promise<GeocoreBinaryDataInfo> {
+        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<GeocoreBinaryDataInfo> in
+            return Geocore.sharedInstance.promisedUploadPOST("/objs/\(sid)/bins/\(key)", parameters: nil, fieldName: "data", fileName: "data", mimeType: mimeType, fileContents: data)
+        }
+    }
+    
+    public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
+        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<[GeocoreBinaryDataInfo]> in
+            return Geocore.sharedInstance.promisedGET("/objs/\(sid)/bins", parameters: nil)
+        }
+    }
+    
+    public func binary(key: String) -> Promise<GeocoreBinaryDataInfo> {
+        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<GeocoreBinaryDataInfo> in
+            return Geocore.sharedInstance.promisedGET("/objs/\(sid)/bins/\(key)/url", parameters: nil)
+        }
+    }
+    
 }
 
 // MARK: -

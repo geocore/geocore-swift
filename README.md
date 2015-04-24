@@ -1,6 +1,6 @@
 # GeocoreKit
 
-**This is a very early version that is not really useful except for some basic operations.**
+**This is a very early version.**
 
 GeocoreKit is a pure Swift framework for accessing Geocore API server.
 
@@ -24,6 +24,9 @@ Here's a basic example showing how to chain promises to:
 * Fetch an object.
 * Fetch some places.
 ```swift
+import PromiseKit
+import GeocoreKit
+
 Geocore.sharedInstance
     .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
     .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
@@ -33,7 +36,7 @@ Geocore.sharedInstance
     }
     .then { (obj: GeocoreObject) -> Promise<[GeocorePlace]> in
         println("--- The object as promised:")
-        println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.description!)")
+        println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.desc!)")
         return GeocorePlace.get()
     }
     .then { (places: [GeocorePlace]) -> Void in
@@ -48,27 +51,27 @@ A less modern approach is to use nested callbacks:
 ```swift
 Geocore.sharedInstance
     .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
-    .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD) { (optToken, optError) -> Void in
-        if let token = optToken {
+    .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD) { (result: GeocoreResult<String>) -> Void in
+        if let token = result.value {
             println("Access Token = \(token)")
-            GeocoreObject.get(GEOCORE_USERID, callback: { (optObj, optError) -> Void in
-                if let obj = optObj {
-                    println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.description!)")
-                    GeocorePlace.get() { (optPlaces, optError) -> Void in
-                        if let places = optPlaces {
+            GeocoreObject.get(GEOCORE_USERID, callback: { (result: GeocoreResult<GeocoreObject>) -> Void in
+                if let obj = result.value {
+                    println("Id = \(obj.id!), Name = \(obj.name!), Description = \(obj.desc!)")
+                    GeocorePlace.get() { (result: GeocoreResult<[GeocorePlace]>) -> Void in
+                        if let places = result.value {
                             for place in places {
                                 println("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
                             }
                         } else {
-                            println(optError)
+                            println(result.error)
                         }
                     }
                 } else {
-                    println(optError)
+                    println(result.error)
                 }
             })
         } else {
-            println(optError)
+            println(result.error)
         }
     }
 ``` 

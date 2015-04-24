@@ -9,6 +9,7 @@
 import UIKit
 import PromiseKit
 import GeocoreKit
+import SwiftyJSON
 
 private let GEOCORE_BASEURL = "http://put.geocore.api.server.url.here"
 private let GEOCORE_PROJECTID = "#PUT_PROJECT_ID_HERE#"
@@ -75,32 +76,177 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         */
         
         /*
-        Geocore.sharedInstance
+        let _:() = Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
-            .then { (accessToken: String) -> Promise<GeocorePlace> in
-                println("Access Token = \(accessToken)")
-                // create a new place
-                let place = GeocorePlace()
-                place.name = "Test Swift 1"
-                place.point = GeocorePoint(latitude: 35.65858, longitude: 139.745433)
-                place.tag(["駅", "テゴリー1", "カテゴリー2"])
-                return place.save()
+            .then { (accessToken: String) -> Promise<GeocoreObject> in
+                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocoreObject.get(GEOCORE_USERID)
             }
-            .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
-                println("New place created, with Sid = \(place.sid), Name = \(place.name), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
-                for tag in place.tags! {
-                    println("  Tagged with with tag Sid = \(tag.sid), Name = \(tag.name)")
-                }
-                // update the newly created place
-                place.name = "Test Swift 2"
-                return place.save()
+            .then { (obj: GeocoreObject) -> Void in
+                println("--- The object as promised:")
+                println("    sid = \(obj.sid)")
+                println("    id = \(obj.id)")
+                println("    name = \(obj.name)")
+                println("    desc = \(obj.desc)")
+                println("    createTime = \(obj.createTime)")
+                println("    updateTime = \(obj.updateTime)")
+                println("    upvotes = \(obj.upvotes)")
+                println("    downvotes = \(obj.downvotes)")
+                println("    customData = \(obj.customData)")
+                println("    jsonData = \(obj.jsonData)")
             }
-            .then { (place: GeocorePlace) -> Void in
-                println("Place with Sid = \(place.sid) updated, now the Name = \(place.name)")
+            .catch { error -> Void in
+                println(error)
             }
         */
         
+        /*
+        let _:() = Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { (accessToken: String) -> Promise<GeocorePlace> in
+                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocorePlace.get("PLA-EKIDATA-1110101")
+            }
+            .then { (place: GeocorePlace) -> Void in
+                println("--- The place as promised:")
+                println("    sid = \(place.sid)")
+                println("    id = \(place.id)")
+                println("    name = \(place.name)")
+                println("    desc = \(place.desc)")
+                println("    createTime = \(place.createTime)")
+                println("    updateTime = \(place.updateTime)")
+                println("    upvotes = \(place.upvotes)")
+                println("    downvotes = \(place.downvotes)")
+                println("    customData = \(place.customData)")
+                println("    jsonData = \(place.jsonData)")
+            }
+            .catch { error -> Void in
+                println(error)
+            }
+        */
+        
+        /*
+        let _:() = Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { (accessToken: String) -> Promise<GeocorePlace> in
+                return GeocorePlace.get("PLA-EKIDATA-1110102")
+            }
+            .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
+                println("--- The place as promised:")
+                println("    sid = \(place.sid)")
+                println("    id = \(place.id)")
+                println("    name = \(place.name)")
+                
+                // test update custom data & JSON
+                place.customData = ["key1": "ばば", "key2": "ぶぶ"]
+                place.jsonData = JSON(["key1": "ばば", "key2": "ぶぶ"])
+                
+                return place.save()
+            }
+            .then { (place: GeocorePlace) -> Void in
+                println("--- The updated place as promised:")
+                println("    customData = \(place.customData)")
+                println("    jsonData = \(place.jsonData)")
+                
+            }
+            .catch { error -> Void in
+                println(error)
+            }
+        */
+        
+        /*
+        if let image = UIImage(named:"logo-mm") {
+            let data = UIImagePNGRepresentation(image)
+            
+            let _:() = Geocore.sharedInstance
+                .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+                .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+                .then { (accessToken: String) -> Promise<GeocorePlace> in
+                    return GeocorePlace.get("PLA-EKIDATA-1110102")
+                }
+                .then { (place: GeocorePlace) -> Promise<(GeocoreBinaryDataInfo, GeocorePlace)> in
+                    println("--- The place as promised:")
+                    println("    sid = \(place.sid)")
+                    println("    id = \(place.id)")
+                    println("    name = \(place.name)")
+                    
+                    // test upload an image
+                    return when(place.upload("test", data: data, mimeType: "image/png"), Promise { (fulfiller, rejecter) in fulfiller(place) })
+                }
+                .then { (binaryDataInfo: GeocoreBinaryDataInfo, place: GeocorePlace) -> Promise<[GeocoreBinaryDataInfo]> in
+                    println("--- The uploaded binary data as promised:")
+                    println("    sid = \(place.sid)")
+                    println("    key = \(binaryDataInfo.key)")
+                    
+                    return place.binaries()
+                }
+                .then { (binaryDataInfos: [GeocoreBinaryDataInfo]) -> Void in
+                    println("--- Lists of uploaded binary data:")
+                    for binaryDataInfo in binaryDataInfos {
+                        println("    key = \(binaryDataInfo.key)")
+                        println("    url = \(binaryDataInfo.url)")
+                    }
+                }
+                .catch { error -> Void in
+                    println(error)
+                }
+        }
+        */
+        
+        /*
+        let _:() = Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { (accessToken: String) -> Promise<GeocorePlace> in
+                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocorePlace.get("PLA-EKIDATA-1110102")
+            }
+            .then { (place: GeocorePlace) -> Promise<[GeocoreBinaryDataInfo]> in
+                println("--- The place as promised:")
+                println("    sid = \(place.sid)")
+                println("    id = \(place.id)")
+                println("    name = \(place.name)")
+                return place.binaries()
+            }
+            .then { (binaryDataInfos: [GeocoreBinaryDataInfo]) -> Void in
+                println("--- Lists of uploaded binary data:")
+                var test: String
+                for binaryDataInfo in binaryDataInfos {
+                    println("    key = \(binaryDataInfo.key)")
+                    test = binaryDataInfo.key!
+                }
+            }
+            .catch { error -> Void in
+                println(error)
+        }
+        */
+        
+        let _:() = Geocore.sharedInstance
+            .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { (accessToken: String) -> Promise<GeocorePlace> in
+                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocorePlace.get("PLA-EKIDATA-1110102")
+            }
+            .then { (place: GeocorePlace) -> Promise<GeocoreBinaryDataInfo> in
+                println("--- The place as promised:")
+                println("    sid = \(place.sid)")
+                println("    id = \(place.id)")
+                println("    name = \(place.name)")
+                return place.binary("test")
+            }
+            .then { (binaryDataInfo: GeocoreBinaryDataInfo) -> Void in
+                println("--- The binary data as promised:")
+                println("    key = \(binaryDataInfo.key)")
+                println("    url = \(binaryDataInfo.url)")
+            }
+            .catch { error -> Void in
+                println(error)
+            }
+
         return true
     }
 

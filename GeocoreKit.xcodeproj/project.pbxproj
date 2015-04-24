@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A940C9071ADDF5CB006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
 		A940C90D1ADDF5E3006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C90A1ADDF5E3006B682F /* Alamofire.framework */; };
+		A98C218F1AE8934D0099BC9D /* GeocoreUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */; };
 		A99BF3471AE75A8E00658BDA /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
 		A99BF3491AE75A8E00658BDA /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */; };
 		A99BF34A1AE75A8E00658BDA /* SwiftyJSON.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9FC1CC61ADE2697004CCB3B /* SwiftyJSON.framework */; };
@@ -62,6 +63,7 @@
 /* Begin PBXFileReference section */
 		A940C9041ADDF5CB006B682F /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = Carthage/Build/iOS/Alamofire.framework; sourceTree = "<group>"; };
 		A940C90A1ADDF5E3006B682F /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = Carthage/Build/Mac/Alamofire.framework; sourceTree = "<group>"; };
+		A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeocoreUtil.swift; sourceTree = "<group>"; };
 		A99BF34D1AE769C100658BDA /* Alamofire.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Alamofire.framework; path = ../Carthage/Build/iOS/Alamofire.framework; sourceTree = "<group>"; };
 		A99BF34E1AE769C100658BDA /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = ../Carthage/Build/iOS/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
 		A99BF34F1AE769C100658BDA /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = ../Carthage/Build/iOS/PromiseKit.framework; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 				A9E680841ADCF45F00FAE624 /* GeocoreKit.h */,
 				A9F157111ADCF87000E6AC34 /* Geocore.swift */,
 				A9FC1CB81ADE1919004CCB3B /* GeocoreObject.swift */,
+				A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */,
 				A9E680821ADCF45F00FAE624 /* Supporting Files */,
 			);
 			path = GeocoreKit;
@@ -366,6 +369,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A98C218F1AE8934D0099BC9D /* GeocoreUtil.swift in Sources */,
 				A9F157121ADCF87000E6AC34 /* Geocore.swift in Sources */,
 				A9FC1CB91ADE1919004CCB3B /* GeocoreObject.swift in Sources */,
 			);
