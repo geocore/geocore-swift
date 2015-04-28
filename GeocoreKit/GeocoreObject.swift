@@ -10,6 +10,11 @@ import Foundation
 import SwiftyJSON
 import PromiseKit
 import Alamofire
+#if os(iOS)
+    import UIKit
+#endif
+
+// MARK: - Common Objects
 
 /**
     Geographical point in WGS84.
@@ -321,6 +326,136 @@ public class GeocoreTaggable: GeocoreObject {
         }
     }
     
+    func savePath(serviceName: String) -> String {
+        if let sid = self.sid {
+            return "/\(serviceName)/\(sid)"
+        } else {
+            return "/\(serviceName)"
+        }
+    }
+    
+    func save<T: GeocoreInitializableFromJSON>(path: String, callback: (GeocoreResult<T>) -> Void) {
+        if let params = resolveTagParameters() {
+            Geocore.sharedInstance.POST(savePath(path), parameters: params.toDictionary(), body: self.toDictionary(), callback: callback)
+        } else {
+            Geocore.sharedInstance.POST(savePath(path), parameters: self.toDictionary(), callback: callback)
+        }
+    }
+    
+    func save<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
+        if let params = resolveTagParameters() {
+            return Geocore.sharedInstance.promisedPOST(savePath(path), parameters: params.toDictionary(), body: self.toDictionary())
+        } else {
+            return Geocore.sharedInstance.promisedPOST(savePath(path), parameters: self.toDictionary())
+        }
+    }
+    
+}
+
+// MARK: -
+
+public class GeocoreUser: GeocoreTaggable {
+    
+    public var password: String?
+    public var email: String?
+    private(set) public var lastLocationTime: NSDate?
+    private(set) public var lastLocation: GeocorePoint?
+    var groupIds: [String]?
+    
+    public override init() {
+        super.init()
+    }
+    
+    public required init(_ json: JSON) {
+        self.email = json["email"].string
+        self.lastLocationTime = NSDate.fromGeocoreFormattedString(json["lastLocationTime"].string)
+        self.lastLocation = GeocorePoint(json["lastLocation"])
+        super.init(json)
+    }
+    
+    public override func toDictionary() -> [String: AnyObject] {
+        var dict = super.toDictionary()
+        if let password = self.password { dict["password"] = password }
+        if let email = self.email { dict["email"] = email }
+        return dict
+    }
+    
+    private func registerParams() -> [String: AnyObject]? {
+        var params = [String: AnyObject]()
+        if let groupIds = self.groupIds { params["group_ids"] = ",".join(groupIds) }
+        if let tagParams = resolveTagParameters() { params += tagParams.toDictionary() }
+        return params.count > 0 ? params : nil
+    }
+    
+    private class func userIdWithSuffix(suffix: String) -> String {
+        if let projectId = Geocore.sharedInstance.projectId {
+            if projectId.hasPrefix("PRO") {
+                // user ID pattern: USE-[project_suffix]-[user_id_suffix]
+                return "USE\(projectId.substringFromIndex(advance(projectId.startIndex, 3)))-\(suffix)"
+            } else {
+                return suffix
+            }
+        } else {
+            return suffix
+        }
+    }
+    
+    public class func defaultName() -> String {
+        #if os(iOS)
+            #if (arch(i386) || arch(x86_64))
+                // iOS simulator
+                return "IOS_SIMULATOR"
+                #else
+                // iOS device
+                return UIDevice.currentDevice().identifierForVendor.UUIDString
+            #endif
+            #else
+            // TODO: generate ID on OSX based on user's device ID
+            return "DEFAULT"
+        #endif
+    }
+    
+    public class func defaultId() -> String {
+        return userIdWithSuffix(defaultName())
+    }
+    
+    public class func defaultEmail() -> String {
+        return "\(defaultName())@geocore.jp"
+    }
+    
+    public class func defaultPassword() -> String {
+        return String(reverse(defaultId()))
+    }
+    
+    public class func defaultUser() -> GeocoreUser {
+        let user = GeocoreUser()
+        user.id = GeocoreUser.defaultId()
+        user.name = GeocoreUser.defaultName()
+        user.email = GeocoreUser.defaultEmail()
+        user.password = GeocoreUser.defaultPassword()
+        return user
+    }
+    
+    // MARK: Callback version
+    
+    public func register(callback: (GeocoreResult<GeocoreUser>) -> Void) {
+        Geocore.sharedInstance.POST("/register", parameters: registerParams(), body: self.toDictionary(), callback: callback)
+    }
+    
+    public func save(callback: (GeocoreResult<GeocoreUser>) -> Void) {
+        super.save("users", callback: callback)
+    }
+    
+    // MARK: Promise version
+    
+    public func register() -> Promise<GeocoreUser> {
+        return Geocore.sharedInstance.promisedPOST("/register", parameters: registerParams(), body: self.toDictionary())
+    }
+    
+    public func save() -> Promise<GeocoreUser> {
+        return super.save("users")
+    }
+        
 }
 
 // MARK: -
@@ -353,22 +488,10 @@ public class GeocorePlace: GeocoreTaggable {
         return dict
     }
     
-    private func savePath() -> String {
-        if let sid = self.sid {
-            return "/places/\(sid)"
-        } else {
-            return "/places"
-        }
-    }
-    
     // MARK: Callback version
     
     public func save(callback: (GeocoreResult<GeocorePlace>) -> Void) {
-        if let params = resolveTagParameters() {
-            Geocore.sharedInstance.POST(savePath(), parameters: params.toDictionary(), body: self.toDictionary(), callback: callback)
-        } else {
-            Geocore.sharedInstance.POST(savePath(), parameters: self.toDictionary(), callback: callback)
-        }
+        super.save("places", callback: callback)
     }
     
     public class func get(id: String, callback: (GeocoreResult<GeocorePlace>) -> Void) {
@@ -386,11 +509,7 @@ public class GeocorePlace: GeocoreTaggable {
     // MARK: Promise version
     
     public func save() -> Promise<GeocorePlace> {
-        if let params = resolveTagParameters() {
-            return Geocore.sharedInstance.promisedPOST(savePath(), parameters: params.toDictionary(), body: self.toDictionary())
-        } else {
-            return Geocore.sharedInstance.promisedPOST(savePath(), parameters: self.toDictionary())
-        }
+        return super.save("places")
     }
     
     public class func get(id: String) -> Promise<GeocorePlace> {

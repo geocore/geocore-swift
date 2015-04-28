@@ -37,14 +37,23 @@ public enum GeocoreError: Int {
     case INVALID_PARAMETER
 }
 
+/**
+    Representing an object that can be initialized from JSON data.
+ */
 public protocol GeocoreInitializableFromJSON {
     init(_ json: JSON)
 }
 
+/**
+    Representing an object that can be serialized to JSON.
+*/
 public protocol GeocoreSerializableToJSON {
     func toDictionary() -> [String: AnyObject]
 }
 
+/**
+    A raw JSON value returned by Geocore service.
+*/
 public class GeocoreGenericResult: GeocoreInitializableFromJSON {
     var json: JSON
     
@@ -63,6 +72,12 @@ public class GeocoreResultValueWrapper<T> {
     public init(_ value: T) { self.value = value }
 }
 
+/**
+    Representing a result returned by Geocore service.
+
+    - Success: Containing value of the result.
+    - Failure: Containing an error.
+*/
 public enum GeocoreResult<T> {
     case Success(GeocoreResultValueWrapper<T>)
     case Failure(NSError)
@@ -114,6 +129,8 @@ public enum GeocoreResult<T> {
     }
 }
 
+// MARK: -
+
 /**
  *  Main singleton class.
  */
@@ -143,6 +160,8 @@ public class Geocore: NSObject {
         self.projectId = projectId;
         return self;
     }
+    
+    // MARK: Private utilities
     
     private func path(servicePath: String) -> String? {
         if let baseURL = self.baseURL {
@@ -242,6 +261,32 @@ public class Geocore: NSObject {
         }
     }
     
+    private func buildQueryParameter(mutableURLRequest: NSMutableURLRequest, parameters: [String: AnyObject]?) -> NSURL? {
+        
+        if let someParameters = parameters {
+            // from Alamofire internal
+            func query(parameters: [String: AnyObject]) -> String {
+                var components: [(String, String)] = []
+                for key in sorted(Array(parameters.keys), <) {
+                    let value: AnyObject! = parameters[key]
+                    components += self.queryComponents(key, value)
+                }
+                
+                return join("&", components.map{"\($0)=\($1)"} as [String])
+            }
+            
+            // since we have both non-nil parameters and body,
+            // the parameters should go to URL query parameters,
+            // and the body should go to HTTP body
+            if let URLComponents = NSURLComponents(URL: mutableURLRequest.URL!, resolvingAgainstBaseURL: false) {
+                URLComponents.percentEncodedQuery = (URLComponents.percentEncodedQuery != nil ? URLComponents.percentEncodedQuery! + "&" : "") + query(someParameters)
+                return URLComponents.URL
+            }
+        }
+        
+        return nil
+    }
+    
     /**
         Build and customize Alamofire request with Geocore token and optional parameter/body specification.
     
@@ -270,28 +315,11 @@ public class Geocore: NSObject {
                     mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
                 }
                 
-                if let someParameters = parameters, someBody = body {
-                    
-                    // from Alamofire internal
-                    func query(parameters: [String: AnyObject]) -> String {
-                        var components: [(String, String)] = []
-                        for key in sorted(Array(parameters.keys), <) {
-                            let value: AnyObject! = parameters[key]
-                            components += self.queryComponents(key, value)
-                        }
-                        
-                        return join("&", components.map{"\($0)=\($1)"} as [String])
+                if let someBody = body {
+                    // pass parameters as query parameters, body to be processed by Alamofire
+                    if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
+                        mutableURLRequest.URL = url
                     }
-                    
-                    // since we have both non-nil parameters and body, 
-                    // the parameters should go to URL query parameters, 
-                    // and the body should go to HTTP body
-                    if let URLComponents = NSURLComponents(URL: mutableURLRequest.URL!, resolvingAgainstBaseURL: false) {
-                        URLComponents.percentEncodedQuery = (URLComponents.percentEncodedQuery != nil ? URLComponents.percentEncodedQuery! + "&" : "") + query(someParameters)
-                        mutableURLRequest.URL = URLComponents.URL
-                    }
-                    
-                    // pass body to be processed by Alamofire
                     return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: someBody).0)
                 } else {
                     // set parameters according to standard Alamofire's encode processing
@@ -299,8 +327,20 @@ public class Geocore: NSObject {
                 }
             }
         } else {
-            // otherwise do a normal Alamofire request
-            return { (path: String) -> Request in Alamofire.request(method, path, parameters: parameters) }
+            if let someBody = body {
+                // no token but with body & parameters separate
+                return { (path: String) -> Request in
+                    let mutableURLRequest = NSMutableURLRequest(URL: NSURL(string: path)!)
+                    mutableURLRequest.HTTPMethod = method.rawValue
+                    if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
+                        mutableURLRequest.URL = url
+                    }
+                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: someBody).0)
+                }
+            } else {
+                // otherwise do a normal Alamofire request
+                return { (path: String) -> Request in Alamofire.request(method, path, parameters: parameters) }
+            }
         }
     }
     
@@ -390,6 +430,8 @@ public class Geocore: NSObject {
         }
     }
     
+    // MARK: HTTP methods: GET, POST, DELETE, PUT
+    
     /**
         Do an HTTP GET request expecting one result of type T
      */
@@ -470,9 +512,15 @@ public class Geocore: NSObject {
         }
     }
     
+    // MARK: User management methods (callback version)
+    
     /**
         Login to Geocore with callback.
-     */
+    
+        :param: userId   User's ID to be submitted.
+        :param: password Password for authorizing user.
+        :param: callback Closure to be called when the token string or an error is returned.
+    */
     public func login(userId: String, password: String, callback:(GeocoreResult<String>) -> Void) {
         self.POST("/auth", parameters: ["id": userId, "password": password, "project_id": self.projectId!]) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
             switch result {
@@ -489,19 +537,63 @@ public class Geocore: NSObject {
         }
     }
     
+    public func loginWithDefaultUser(callback:(GeocoreResult<String>) -> Void) {
+        // login using default id & password
+        self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
+            switch result {
+            case .Success(let wrapper):
+                callback(result)
+            case .Failure(let error):
+                // oops! try to register first
+                if let errorCode = error.userInfo?["code"] as? String {
+                    if errorCode == "Auth.0001" {
+                        // not registered, register the default user first
+                        GeocoreUser.defaultUser().register() { result in
+                            switch result {
+                            case .Success(let wrapper):
+                                // successfully registered, now login again
+                                self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
+                                    callback(result)
+                                }
+                            case .Failure(let error):
+                                callback(.Failure(error))
+                            }
+                        }
+                    } else {
+                        // unexpected error
+                        callback(.Failure(error))
+                    }
+                } else {
+                    // unexpected error
+                    callback(.Failure(error))
+                }
+            }
+        }
+    }
+    
+    // MARK: User management methods (promise version)
+    
     /**
         Login to Geocore with promise.
     
-        :param: userId   User's ID to be submitted
-        :param: password Password for authorizing user
+        :param: userId   User's ID to be submitted.
+        :param: password Password for authorizing user.
     
-        :returns: Promise for Geocore Access Token (as String)
+        :returns: Promise for Geocore Access Token (as String).
      */
     public func login(userId: String, password: String) -> Promise<String> {
         return Promise { (fulfiller, rejecter) in
-            self.login(userId, password: password, callback: { (result: GeocoreResult<String>) -> Void in
+            self.login(userId, password: password) { result in
                 result.propagateTo(fulfiller, rejecter: rejecter)
-            })
+            }
+        }
+    }
+    
+    public func loginWithDefaultUser() -> Promise<String> {
+        return Promise { (fulfiller, rejecter) in
+            self.loginWithDefaultUser { result in
+                result.propagateTo(fulfiller, rejecter: rejecter)
+            }
         }
     }
     
