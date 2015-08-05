@@ -16,6 +16,8 @@ import PromiseKit
 */
 public let GeocoreErrorDomain = "jp.geocore.error"
 
+private let MMG_SETKEY_BASE_URL = "GeocoreBaseURL"
+private let MMG_SETKEY_PROJECT_ID = "GeocoreProjectId"
 private let HTTPHEADER_ACCESS_TOKEN_NAME = "Geocore-Access-Token"
 
 /**
@@ -145,6 +147,8 @@ public class Geocore: NSObject {
     private var token: String?
     
     private override init() {
+        self.baseURL = NSBundle.mainBundle().objectForInfoDictionaryKey(MMG_SETKEY_BASE_URL) as? String
+        self.projectId = NSBundle.mainBundle().objectForInfoDictionaryKey(MMG_SETKEY_PROJECT_ID) as? String
     }
     
     /**
