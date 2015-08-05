@@ -361,11 +361,13 @@ public class Geocore: NSObject {
             requestBuilder: (String) -> Request,
             onSuccess: (JSON) -> Void,
             onError: (NSError) -> Void) {
-        requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
+                requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
+                    
             if let error = optError {
                 println("[ERROR] \(error)")
                 onError(error)
-            } else if let data = optData as? NSData {
+            } else if let any = optData { // TODO: figure out how to fix this thing!
+                let data = any as! NSData
                 if let statusCode = res?.statusCode {
                     switch statusCode {
                     case 200:

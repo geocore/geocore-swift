@@ -26,6 +26,8 @@
 		A9E680851ADCF45F00FAE624 /* GeocoreKit.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E680841ADCF45F00FAE624 /* GeocoreKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A9E6808B1ADCF45F00FAE624 /* GeocoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9E6807F1ADCF45F00FAE624 /* GeocoreKit.framework */; };
 		A9E680921ADCF45F00FAE624 /* GeocoreKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E680911ADCF45F00FAE624 /* GeocoreKitTests.swift */; };
+		A9EE0FA71B72040000903005 /* GeocoreUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */; };
+		A9EE0FA81B72040B00903005 /* GeocoreObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FC1CB81ADE1919004CCB3B /* GeocoreObject.swift */; };
 		A9F157121ADCF87000E6AC34 /* Geocore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F157111ADCF87000E6AC34 /* Geocore.swift */; };
 		A9F157131ADCF87000E6AC34 /* Geocore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F157111ADCF87000E6AC34 /* Geocore.swift */; };
 		A9FC1CB91ADE1919004CCB3B /* GeocoreObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FC1CB81ADE1919004CCB3B /* GeocoreObject.swift */; };
@@ -387,6 +389,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9EE0FA71B72040000903005 /* GeocoreUtil.swift in Sources */,
+				A9EE0FA81B72040B00903005 /* GeocoreObject.swift in Sources */,
 				A9F157131ADCF87000E6AC34 /* Geocore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

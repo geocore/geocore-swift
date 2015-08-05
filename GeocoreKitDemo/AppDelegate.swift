@@ -265,8 +265,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         let _:() = Geocore.sharedInstance
             .loginWithDefaultUser()
-            .then { (accessToken: String) -> Void in
+            .then { (accessToken: String) -> Promise<GeocorePlace> in
                 println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocorePlace.get("PLA-EKIDATA-1110102")
+            }
+            .then { (place: GeocorePlace) -> Promise<GeocoreBinaryDataInfo> in
+                println("--- The place as promised:")
+                println("    sid = \(place.sid)")
+                println("    id = \(place.id)")
+                println("    name = \(place.name)")
+                return place.binary("test")
+            }
+            .then { (binaryDataInfo: GeocoreBinaryDataInfo) -> Void in
+                println("--- The binary data as promised:")
+                println("    key = \(binaryDataInfo.key)")
+                println("    url = \(binaryDataInfo.url)")
             }
             .catch { error -> Void in
                 println(error)
