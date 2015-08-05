@@ -11,12 +11,10 @@ import PromiseKit
 import GeocoreKit
 import SwiftyJSON
 
-/*
 private let GEOCORE_BASEURL = "http://put.geocore.api.server.url.here"
 private let GEOCORE_PROJECTID = "#PUT_PROJECT_ID_HERE#"
 private let GEOCORE_USERID = "#PUT_USER_ID_HERE#"
 private let GEOCORE_USERPASSWORD = "#PUT_USER_PASSWORD_HERE#"
-*/
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -226,7 +224,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         */
         
-        /*
         let _:() = Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
@@ -249,8 +246,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .catch { error -> Void in
                 println(error)
             }
-        */
         
+        /*
         let _:() = Geocore.sharedInstance
             .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .loginWithDefaultUser()
@@ -260,6 +257,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .catch { error -> Void in
                 println(error)
             }
+        */
         
 
         return true
