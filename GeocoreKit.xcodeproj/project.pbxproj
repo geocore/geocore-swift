@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A940C9071ADDF5CB006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
 		A940C90D1ADDF5E3006B682F /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C90A1ADDF5E3006B682F /* Alamofire.framework */; };
 		A98C218F1AE8934D0099BC9D /* GeocoreUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */; };
 		A99BF3471AE75A8E00658BDA /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
@@ -28,6 +27,7 @@
 		A9E680921ADCF45F00FAE624 /* GeocoreKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E680911ADCF45F00FAE624 /* GeocoreKitTests.swift */; };
 		A9EE0FA71B72040000903005 /* GeocoreUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */; };
 		A9EE0FA81B72040B00903005 /* GeocoreObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FC1CB81ADE1919004CCB3B /* GeocoreObject.swift */; };
+		A9EE0FAA1B7216B700903005 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A940C9041ADDF5CB006B682F /* Alamofire.framework */; };
 		A9F157121ADCF87000E6AC34 /* Geocore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F157111ADCF87000E6AC34 /* Geocore.swift */; };
 		A9F157131ADCF87000E6AC34 /* Geocore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F157111ADCF87000E6AC34 /* Geocore.swift */; };
 		A9FC1CB91ADE1919004CCB3B /* GeocoreObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FC1CB81ADE1919004CCB3B /* GeocoreObject.swift */; };
@@ -93,10 +93,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9EE0FAA1B7216B700903005 /* Alamofire.framework in Frameworks */,
 				A9BD24571ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework in Frameworks */,
 				A9BD24581ADE5A2900CDEE4C /* PromiseKit.framework in Frameworks */,
 				A9FC1CC71ADE2697004CCB3B /* SwiftyJSON.framework in Frameworks */,
-				A940C9071ADDF5CB006B682F /* Alamofire.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

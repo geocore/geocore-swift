@@ -18,11 +18,15 @@ private let GEOCORE_USERID = "#PUT_USER_ID_HERE#"
 private let GEOCORE_USERPASSWORD = "#PUT_USER_PASSWORD_HERE#"
 */
 
+class Madu {
+    var kadaluarsa: Bool?
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-
+    
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         
         /*
@@ -263,6 +267,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         */
         
+        /*
         let _:() = Geocore.sharedInstance
             .loginWithDefaultUser()
             .then { (accessToken: String) -> Promise<GeocorePlace> in
@@ -284,7 +289,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .catch { error -> Void in
                 println(error)
         }
-
+        */
+        
+        let _:() = Geocore.sharedInstance
+            .loginWithDefaultUser()
+            .then { (accessToken: String) -> Promise<[GeocorePlace]> in
+                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                return GeocorePlace.get(minLat: 35.66617440081799, minLon: 139.7126117348629, maxLat: 35.67753978462231, maxLon: 139.72917705773887)
+            }
+            .then { (places: [GeocorePlace]) -> Void in
+                println("--- Some places as promised:")
+                for place in places {
+                    println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+                }
+            }
+            .catch { error -> Void in
+                println(error)
+            }
+        
+        /*
+        Geocore.sharedInstance.loginWithDefaultUser().then { accessToken -> Void in
+            println("Logged in to Geocore successfully, with access token = \(accessToken)")
+        }
+        */
+        
         return true
     }
 

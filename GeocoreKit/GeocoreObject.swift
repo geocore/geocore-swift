@@ -502,6 +502,10 @@ public class GeocorePlace: GeocoreTaggable {
         Geocore.sharedInstance.GET("/places", callback: callback)
     }
     
+    public class func get(#minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, callback: (GeocoreResult<GeocorePlace>) -> Void) {
+        Geocore.sharedInstance.GET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)", callback: callback)
+    }
+    
     public func delete(callback: (GeocoreResult<GeocorePlace>) -> Void) {
         super.delete("/places", callback: callback)
     }
@@ -518,6 +522,10 @@ public class GeocorePlace: GeocoreTaggable {
     
     public class func get() -> Promise<[GeocorePlace]> {
         return Geocore.sharedInstance.promisedGET("/places")
+    }
+    
+    public class func get(#minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) -> Promise<[GeocorePlace]> {
+        return Geocore.sharedInstance.promisedGET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)")
     }
     
     public func delete() -> Promise<GeocorePlace> {
