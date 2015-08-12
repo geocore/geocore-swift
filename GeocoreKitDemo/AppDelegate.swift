@@ -331,28 +331,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         */
         
-        /*
-        GeocorePlace
-            .get(minLat: 35.66617440081799, minLon: 139.7126117348629, maxLat: 35.67753978462231, maxLon: 139.72917705773887)
-            .then { (places: [GeocorePlace]) -> Void in
-                println("--- Some places as promised:")
-                for place in places {
-                    println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
-                }
-            }
-        */
-        
-        /*
-        GeocorePlace
-            .get(centerLat: 35.66617440081799, centerLon: 139.7126117348629)
-            .then { (places: [GeocorePlace]) -> Void in
-                println("--- Some places as promised:")
-                for place in places {
-                    println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
-                }
-        }
-        */
-        
         return true
     }
 
