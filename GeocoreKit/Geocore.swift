@@ -21,7 +21,7 @@ private let MMG_SETKEY_PROJECT_ID = "GeocoreProjectId"
 private let HTTPHEADER_ACCESS_TOKEN_NAME = "Geocore-Access-Token"
 
 /**
-    GeocoreKit error code.
+    GeocoreKit jjmjjjjjjerror code.
 
     - INVALID_STATE:           Unexpected internal state. Possibly a bug.
     - INVALID_SERVER_RESPONSE: Unexpected server response. Possibly a bug.
@@ -361,47 +361,44 @@ public class Geocore: NSObject {
             requestBuilder: (String) -> Request,
             onSuccess: (JSON) -> Void,
             onError: (NSError) -> Void) {
+                
                 requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
-                    
-            if let error = optError {
-                println("[ERROR] \(error)")
-                onError(error)
-            } else if let any = optData { // TODO: figure out how to fix this thing!
-                let data = any as! NSData
-                if let statusCode = res?.statusCode {
-                    switch statusCode {
-                    case 200:
-                        let json = JSON(data: data)
-                        if let status = json["status"].string {
-                            if status == "success" {
-                                onSuccess(json["result"])
-                            } else {
-                                // pass on server error info as userInfo
-                                onError(
-                                    NSError(
-                                        domain: GeocoreErrorDomain,
-                                        code: GeocoreError.SERVER_ERROR.rawValue,
-                                        userInfo: [
-                                            "code": json["code"].string ?? "",
-                                            "message": json["message"].string ?? ""
-                                        ]))
+                    if let error = optError {
+                        println("[ERROR] \(error)")
+                        onError(error)
+                    } else if let data = optData {
+                        if let statusCode = res?.statusCode {
+                            switch statusCode {
+                            case 200:
+                                let json = JSON(data: data)
+                                if let status = json["status"].string {
+                                    if status == "success" {
+                                        onSuccess(json["result"])
+                                    } else {
+                                        // pass on server error info as userInfo
+                                        onError(
+                                            NSError(
+                                                domain: GeocoreErrorDomain,
+                                                code: GeocoreError.SERVER_ERROR.rawValue,
+                                                userInfo: [
+                                                    "code": json["code"].string ?? "",
+                                                    "message": json["message"].string ?? ""
+                                                ]))
+                                    }
+                                } else {
+                                    onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: nil))
+                                }
+                            case 403:
+                                onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.UNAUTHORIZED_ACCESS.rawValue, userInfo: nil))
+                            default:
+                                onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: ["statusCode": statusCode]))
                             }
                         } else {
+                            // TODO: should specify the error futher in userInfo
                             onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: nil))
                         }
-                    case 403:
-                        onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.UNAUTHORIZED_ACCESS.rawValue, userInfo: nil))
-                    default:
-                        onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: ["statusCode": statusCode]))
                     }
-                } else {
-                    // TODO: should specify the error futher in userInfo
-                    onError(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_SERVER_RESPONSE.rawValue, userInfo: nil))
                 }
-            } else {
-                println("[ERROR] Unexpected data: \(optData)")
-            }
-        }
     }
     
     /**

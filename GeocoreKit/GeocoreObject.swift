@@ -528,6 +528,10 @@ public class GeocorePlace: GeocoreTaggable {
         return Geocore.sharedInstance.promisedGET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)")
     }
     
+    public class func get(#centerLat: Double, centerLon: Double) -> Promise<[GeocorePlace]> {
+        return Geocore.sharedInstance.promisedGET("/places/search/nearest?lat=\(centerLat)&lon=\(centerLon)")
+    }
+    
     public func delete() -> Promise<GeocorePlace> {
         return super.delete("/places")
     }
