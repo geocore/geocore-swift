@@ -18,6 +18,41 @@ github "geocore/geocore-swift"
 
 ## Usage
 
+Before using the library, the easiest way to setup the connection is by adding following keys to the `Info.plist` file:
+
+Key name | Value
+----------|-------
+GeocoreBaseURL | Base URL of the Geocore API
+GeocoreProjectId | ID of the project provided by MapMotion
+
+By importing `GeocoreKit`, the library's main singleton instance is accesible using `sharedInstance` static member as shown below:
+```swift
+import GeocoreKit
+
+// ....
+
+let geocore = Geocore.sharedInstance
+```
+
+Once you have configured the connection, the easiest way to login to Geocore is by using `loginWithDefaultUser` available from the Geocore singleton object. Most functions provided by Geocore return `Promise` object.
+```swift
+Geocore.sharedInstance.loginWithDefaultUser().then { accessToken -> Void in
+    println("Logged in to Geocore successfully, with access token = \(accessToken)")
+}
+```
+
+Following example show how to get places within a specified rectangle:
+```swift
+GeocorePlace
+    .get(minLat: 35.66617440081799, minLon: 139.7126117348629, maxLat: 35.67753978462231, maxLon: 139.72917705773887)
+    .then { (places: [GeocorePlace]) -> Void in
+        println("--- Some places as promised:")
+        for place in places {
+            println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+        }
+    }
+```
+
 Here's a basic example showing how to chain promises to:
 * Initialize the framework.
 * Login to Geocore.
