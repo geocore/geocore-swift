@@ -41,7 +41,7 @@ class GeocoreKitTests: XCTestCase {
         
         let _:() = Geocore.sharedInstance
             .login("dummy_userid", password: "dummy_password")
-            .catch { (error) -> Void in
+            .error { error in
                 XCTAssert(error.code == GeocoreError.SERVER_ERROR.rawValue)
                 if let serverCode = error.userInfo?["code"] as? String {
                     XCTAssert(serverCode == "Auth.0001")
@@ -66,7 +66,7 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssert(count(accessToken) > 0)
                 expectation.fulfill()
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTFail("Error logging in: \(error)")
                 expectation.fulfill()
             }
@@ -86,7 +86,7 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(object.id!, GEOCORE_USERID)
                 expectation.fulfill()
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTFail("Error getting object: \(error)")
                 expectation.fulfill()
             }
@@ -119,7 +119,7 @@ class GeocoreKitTests: XCTestCase {
                 }
                 expectation.fulfill()
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTFail("Error creating place: \(error)")
                 expectation.fulfill()
             }
@@ -144,7 +144,7 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(place.name!, newName)
                 expectation.fulfill()
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTFail("Error creating place: \(error)")
                 expectation.fulfill()
             }
@@ -166,7 +166,7 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 expectation.fulfill()
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTFail("Error deleting place: \(error)")
                 expectation.fulfill()
             }
@@ -183,7 +183,7 @@ class GeocoreKitTests: XCTestCase {
             .then { (place: GeocorePlace) -> Void in
                 XCTFail("Deleted place found, shouldn't happen")
             }
-            .catch { (error) -> Void in
+            .error { error in
                 XCTAssert(error.code == GeocoreError.SERVER_ERROR.rawValue)
                 if let serverCode = error.userInfo?["code"] as? String {
                     XCTAssert(serverCode == "General.0011")

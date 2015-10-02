@@ -57,8 +57,8 @@ public class GeocoreTagParameters: GeocoreSerializableToJSON {
     
     public func toDictionary() -> [String: AnyObject] {
         var dict = [String: AnyObject]()
-        if let tagIds = self.tagIds { dict["tag_ids"] = ",".join(tagIds) }
-        if let tagNames = self.tagNames { dict["tag_names"] = ",".join(tagNames) }
+        if let tagIds = self.tagIds { dict["tag_ids"] = tagIds.joinWithSeparator(",") }
+        if let tagNames = self.tagNames { dict["tag_names"] = tagNames.joinWithSeparator(",") }
         return dict
     }
     
@@ -313,7 +313,7 @@ public class GeocoreTaggable: GeocoreObject {
     
     func resolveTagParameters() -> GeocoreTagParameters? {
         if self.tagIds != nil || self.tagNames != nil {
-            var params = GeocoreTagParameters()
+            let params = GeocoreTagParameters()
             if let tagIds = self.tagIds {
                 params.tagIds(tagIds)
             }
@@ -382,7 +382,7 @@ public class GeocoreUser: GeocoreTaggable {
     
     private func registerParams() -> [String: AnyObject]? {
         var params = [String: AnyObject]()
-        if let groupIds = self.groupIds { params["group_ids"] = ",".join(groupIds) }
+        if let groupIds = self.groupIds { params["group_ids"] = groupIds.joinWithSeparator(",") }
         if let tagParams = resolveTagParameters() { params += tagParams.toDictionary() }
         return params.count > 0 ? params : nil
     }
@@ -391,7 +391,7 @@ public class GeocoreUser: GeocoreTaggable {
         if let projectId = Geocore.sharedInstance.projectId {
             if projectId.hasPrefix("PRO") {
                 // user ID pattern: USE-[project_suffix]-[user_id_suffix]
-                return "USE\(projectId.substringFromIndex(advance(projectId.startIndex, 3)))-\(suffix)"
+                return "USE\(projectId.substringFromIndex(projectId.startIndex.advancedBy(3)))-\(suffix)"
             } else {
                 return suffix
             }
@@ -424,7 +424,7 @@ public class GeocoreUser: GeocoreTaggable {
     }
     
     public class func defaultPassword() -> String {
-        return String(reverse(defaultId()))
+        return String(defaultId().characters.reverse())
     }
     
     public class func defaultUser() -> GeocoreUser {
@@ -502,7 +502,7 @@ public class GeocorePlace: GeocoreTaggable {
         Geocore.sharedInstance.GET("/places", callback: callback)
     }
     
-    public class func get(#minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, callback: (GeocoreResult<GeocorePlace>) -> Void) {
+    public class func get(minLat minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, callback: (GeocoreResult<GeocorePlace>) -> Void) {
         Geocore.sharedInstance.GET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)", callback: callback)
     }
     
@@ -524,11 +524,11 @@ public class GeocorePlace: GeocoreTaggable {
         return Geocore.sharedInstance.promisedGET("/places")
     }
     
-    public class func get(#minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) -> Promise<[GeocorePlace]> {
+    public class func get(minLat minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) -> Promise<[GeocorePlace]> {
         return Geocore.sharedInstance.promisedGET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)")
     }
     
-    public class func get(#centerLat: Double, centerLon: Double) -> Promise<[GeocorePlace]> {
+    public class func get(centerLat centerLat: Double, centerLon: Double) -> Promise<[GeocorePlace]> {
         return Geocore.sharedInstance.promisedGET("/places/search/nearest?lat=\(centerLat)&lon=\(centerLon)")
     }
     

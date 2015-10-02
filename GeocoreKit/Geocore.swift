@@ -69,10 +69,12 @@ public class GeocoreGenericResult: GeocoreInitializableFromJSON {
 // http://owensd.io/2014/07/09/error-handling.html
 // https://github.com/owensd/SwiftLib/blob/master/Source/Failable.swift
 // ultimately this wrapper will not be necessary once the compiler is fixed.
+/*
 public class GeocoreResultValueWrapper<T> {
     let value: T
     public init(_ value: T) { self.value = value }
 }
+*/
 
 /**
     Representing a result returned by Geocore service.
@@ -81,11 +83,13 @@ public class GeocoreResultValueWrapper<T> {
     - Failure: Containing an error.
 */
 public enum GeocoreResult<T> {
-    case Success(GeocoreResultValueWrapper<T>)
+    //case Success(GeocoreResultValueWrapper<T>)
+    case Success(T)
     case Failure(NSError)
     
     public init(_ value: T) {
-        self = .Success(GeocoreResultValueWrapper(value))
+        //self = .Success(GeocoreResultValueWrapper(value))
+        self = .Success(value)
     }
     
     public init(_ error: NSError) {
@@ -94,9 +98,8 @@ public enum GeocoreResult<T> {
     
     public var failed: Bool {
         switch self {
-        case .Failure(let error):
+        case .Failure(_):
             return true
-            
         default:
             return false
         }
@@ -114,17 +117,25 @@ public enum GeocoreResult<T> {
     
     public var value: T? {
         switch self {
+        /*
         case .Success(let wrapper):
             return wrapper.value
+        */
+        case .Success(let value):
+            return value
         default:
             return nil
         }
     }
     
-    public func propagateTo(fulfiller: (T) -> Void, rejecter: (NSError) -> Void) -> Void {
+    public func propagateTo(fulfiller: (T) -> Void, rejecter: (ErrorType) -> Void) -> Void {
         switch self {
+        /*
         case .Success(let wrapper):
             fulfiller(wrapper.value)
+        */
+        case .Success(let value):
+            fulfiller(value)
         case .Failure(let error):
             rejecter(error)
         }
@@ -237,13 +248,13 @@ public class Geocore: NSObject {
                 components += queryComponents("\(key)[]", value)
             }
         } else {
-            components.extend([(escape(key), escape("\(value)"))])
+            components.appendContentsOf([(escape(key), escape("\(value)"))])
         }
         
         return components
     }
     
-    private func multipartInfo(_ body: [String: AnyObject]? = nil) -> (fileContents: NSData, fileName: String, fieldName: String, mimeType: String)? {
+    private func multipartInfo(body: [String: AnyObject]? = nil) -> (fileContents: NSData, fileName: String, fieldName: String, mimeType: String)? {
         if let fileContents = body?["$fileContents"] as? NSData {
             if let fileName = body?["$fileName"] as? String, fieldName = body?["$fieldName"] as? String, mimeType = body?["$mimeType"] as? String {
                 return (fileContents, fileName, fieldName, mimeType)
@@ -252,10 +263,10 @@ public class Geocore: NSObject {
         return nil
     }
     
-    private func validateRequestBody(_ body: [String: AnyObject]? = nil) -> Bool {
-        if let fileContent = body?["$fileContents"] as? NSData {
+    private func validateRequestBody(body: [String: AnyObject]? = nil) -> Bool {
+        if let _ = body?["$fileContents"] as? NSData {
             // uploading file, make sure all required parameters are specified as well
-            if let fileName = body?["$fileName"] as? String, fieldName = body?["$fieldName"] as? String, mimeType = body?["$mimeType"] as? String {
+            if let _ = body?["$fileName"] as? String, _ = body?["$fieldName"] as? String, _ = body?["$mimeType"] as? String {
                 return true
             } else {
                 return false
@@ -271,12 +282,12 @@ public class Geocore: NSObject {
             // from Alamofire internal
             func query(parameters: [String: AnyObject]) -> String {
                 var components: [(String, String)] = []
-                for key in sorted(Array(parameters.keys), <) {
-                    let value: AnyObject! = parameters[key]
-                    components += self.queryComponents(key, value)
+                for key in Array(parameters.keys).sort(<) {
+                    let value = parameters[key]!
+                    components += queryComponents(key, value)
                 }
                 
-                return join("&", components.map{"\($0)=\($1)"} as [String])
+                return (components.map { "\($0)=\($1)" } as [String]).joinWithSeparator("&")
             }
             
             // since we have both non-nil parameters and body,
@@ -364,7 +375,7 @@ public class Geocore: NSObject {
                 
                 requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
                     if let error = optError {
-                        println("[ERROR] \(error)")
+                        print("[ERROR] \(error)")
                         onError(error)
                     } else if let data = optData {
                         if let statusCode = res?.statusCode {
@@ -527,8 +538,8 @@ public class Geocore: NSObject {
     public func login(userId: String, password: String, callback:(GeocoreResult<String>) -> Void) {
         self.POST("/auth", parameters: ["id": userId, "password": password, "project_id": self.projectId!]) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
             switch result {
-                case .Success(let wrapper):
-                    self.token = wrapper.value.json["token"].string
+                case .Success(let value):
+                    self.token = value.json["token"].string
                     if let token = self.token {
                         callback(GeocoreResult(token))
                     } else {
@@ -544,16 +555,16 @@ public class Geocore: NSObject {
         // login using default id & password
         self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
             switch result {
-            case .Success(let wrapper):
+            case .Success(_):
                 callback(result)
             case .Failure(let error):
                 // oops! try to register first
-                if let errorCode = error.userInfo?["code"] as? String {
+                if let errorCode = error.userInfo["code"] as? String {
                     if errorCode == "Auth.0001" {
                         // not registered, register the default user first
                         GeocoreUser.defaultUser().register() { result in
                             switch result {
-                            case .Success(let wrapper):
+                            case .Success(_):
                                 // successfully registered, now login again
                                 self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
                                     callback(result)

@@ -312,17 +312,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Geocore.sharedInstance
             .loginWithDefaultUser()
             .then { (accessToken: String) -> Promise<[GeocorePlace]> in
-                println("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                print("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
                 return GeocorePlace.get(centerLat: 35.66617440081799, centerLon: 139.7126117348629)
             }
             .then { (places: [GeocorePlace]) -> Void in
-                println("--- Some places as promised:")
+                print("--- Some places as promised:")
                 for place in places {
-                    println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+                    print("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
                 }
             }
-            .catch { error -> Void in
-                println(error)
+            .error { error in
+                print(error)
         }
         
         /*
