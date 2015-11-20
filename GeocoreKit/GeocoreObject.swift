@@ -407,7 +407,7 @@ public class GeocoreUser: GeocoreTaggable {
                 return "IOS_SIMULATOR"
                 #else
                 // iOS device
-                return UIDevice.currentDevice().identifierForVendor.UUIDString
+                return UIDevice.currentDevice().identifierForVendor!.UUIDString
             #endif
             #else
             // TODO: generate ID on OSX based on user's device ID
