@@ -14,78 +14,245 @@ import Alamofire
     import UIKit
 #endif
 
-// MARK: - Common Objects
+// MARK: - Object Operations and Queries
 
 /**
-    Geographical point in WGS84.
+    Base class for all operations that can be used to interact with Geocore services
+    to fetch and manipulate Geocore objects.
  */
-public struct GeocorePoint: GeocoreSerializableToJSON {
-    public var latitude: Float?
-    public var longitude: Float?
+public class GeocoreObjectOperation {
+    
+    private(set) public var id: String?
     
     public init() {
     }
     
-    public init(latitude: Float?, longitude: Float?) {
-        self.latitude = latitude
-        self.longitude = longitude
+    /**
+     Assign the object ID to operate on.
+     
+     - parameter id: Object ID
+     
+     - returns: The updated operation object to be chain-called.
+     */
+    public func withId(id: String) -> Self {
+        self.id = id
+        return self
     }
     
-    public init(_ json: JSON) {
-        self.latitude = json["latitude"].float
-        self.longitude = json["longitude"].float
-    }
-    
-    public func toDictionary() -> [String: AnyObject] {
-        if let latitude = self.latitude, longitude = self.longitude {
-            return ["latitude": NSNumber(float: latitude), "longitude": NSNumber(float: longitude)]
+    public func buildPath(forService: String) -> String {
+        if let id = self.id {
+            return "\(forService)/\(id)";
         } else {
-            return [String: AnyObject]()
+            return forService;
         }
     }
-}
-
-/**
-    Tag-related parameters to be submitted as part of a request.
-*/
-public class GeocoreTagParameters: GeocoreSerializableToJSON {
-    private var tagIds: [String]?
-    private var tagNames: [String]?
     
-    public init() {
+    public func buildPath(forService: String, withSubPath: String) -> String? {
+        if let id = self.id {
+            return "\(forService)/\(id)\(withSubPath)";
+        } else {
+            return nil;
+        }
     }
     
-    public func toDictionary() -> [String: AnyObject] {
-        var dict = [String: AnyObject]()
-        if let tagIds = self.tagIds { dict["tag_ids"] = tagIds.joinWithSeparator(",") }
-        if let tagNames = self.tagNames { dict["tag_names"] = tagNames.joinWithSeparator(",") }
+    public func buildQueryParameters() -> [String: AnyObject] {
+        return [String: AnyObject]();
+    }
+    
+    public func save<TI: GeocoreIdentifiable, TO: GeocoreInitializableFromJSON>(obj: TI, forService: String) -> Promise<TO> {
+        if let sid = obj.sid {
+            // use sid to determine whether this 'save' is for 'create' or 'update'
+            // withId will only work for 'update'
+            withId("\(sid)")
+        }
+        let params = buildQueryParameters()
+        if params.count > 0 {
+            return Geocore.sharedInstance.promisedPOST(buildPath(forService), parameters: params, body: obj.toDictionary())
+        } else {
+            return Geocore.sharedInstance.promisedPOST(buildPath(forService), parameters: obj.toDictionary())
+        }
+    }
+    
+    public func delete<T: GeocoreIdentifiable>(obj: T, forService: String) -> Promise<T> {
+        if let id = obj.id {
+            withId(id)
+            return Geocore.sharedInstance.promisedDELETE(buildPath(forService))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object cannot be deleted")) }
+        }
+    }
+    
+}
+
+public class GeocoreObjectQuery: GeocoreObjectOperation {
+    
+    private(set) public var unlimitedRecords: Bool
+    private(set) public var name: String?
+    private(set) public var fromDate: NSDate?
+    private(set) public var customDataValue: String?
+    private(set) public var customDataKey: String?
+    private(set) public var page: Int?
+    private(set) public var numberPerPage: Int?
+    
+    public override init() {
+        self.unlimitedRecords = false
+    }
+    
+    public func withName(name: String) -> Self {
+        self.name = name
+        return self
+    }
+    
+    public func updatedAfter(date: NSDate) -> Self {
+        self.fromDate = date
+        return self
+    }
+    
+    public func havingCustomData(value: String, forKey: String) -> Self {
+        self.customDataValue = value
+        self.customDataKey = forKey
+        return self
+    }
+    
+    public func page(page: Int) -> Self {
+        self.page = page
+        return self
+    }
+    
+    public func numberPerPage(numberPerPage: Int) -> Self {
+        self.numberPerPage = numberPerPage
+        return self
+    }
+    
+    public override func buildQueryParameters() -> [String: AnyObject] {
+        var dict = super.buildQueryParameters()
+        if unlimitedRecords {
+            dict["num"] = 0
+        } else {
+            if let page = self.page {
+                dict["page"] = page
+            }
+            if let numberPerPage = self.numberPerPage {
+                dict["num"] = numberPerPage
+            }
+        }
+        if let fromDate = self.fromDate {
+            dict["from_date"] = NSDateFormatter.dateFormatterForGeocore().stringFromDate(fromDate)
+        }
         return dict
     }
     
-    /**
-        Set tag IDs to be submitted as request parameter.
-    
-        :param: tagIds Tag IDs to be submitted
-    
-        :returns: The updated parameter object to be chain-called.
-    */
-    public func tagIds(tagIds: [String]) -> GeocoreTagParameters {
-        self.tagIds = tagIds
-        return self
+    public func get<T: GeocoreInitializableFromJSON>(forService: String) -> Promise<T> {
+        if id != nil {
+            return Geocore.sharedInstance.promisedGET(buildPath(forService))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
     }
-
-    /**
-        Set tag names to be submitted as request parameter.
     
-        :param: tagNames Tag names to be submitted
-    
-        :returns: The updated parameter object to be chain-called.
-    */
-    public func tagNames(tagNames: [String]) -> GeocoreTagParameters {
-        self.tagNames = tagNames
-        return self
+    public func get() -> Promise<GeocoreObject> {
+        return self.get("/objs")
     }
+    
+    public func lastUpdate(forService: String) -> Promise<NSDate> {
+        return Promise { fulfill, reject in
+            Geocore.sharedInstance.GET("\(forService)/lastUpdate", callback: { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
+                switch result {
+                case .Success(let value):
+                    if let lastUpdate = value.json["lastUpdate"].string {
+                        if let lastUpdateDate = NSDateFormatter.dateFormatterForGeocore().dateFromString(lastUpdate) {
+                            fulfill(lastUpdateDate)
+                        } else {
+                            reject(GeocoreError.UnexpectedResponse(message: "Unable to convert lastUpdate to NSDate: \(lastUpdate)"))
+                        }
+                    } else {
+                        reject(GeocoreError.UnexpectedResponse(message: "Unable to find lastUpdate in response"))
+                    }
+                case .Failure(let error):
+                    reject(error)
+                }
+            })
+        }
+    }  
+    
 }
+
+public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
+    
+    private(set) public var key: String?
+    private(set) public var mimeType: String = "application/octet-stream"
+    private(set) public var data: NSData?
+    
+    public func withKey(key: String) -> Self {
+        self.key = key
+        return self
+    }
+    
+    public func withMimeType(mimeType: String) -> Self {
+        self.mimeType = mimeType
+        return self
+    }
+    
+    public func withData(data: NSData) -> Self {
+        self.data = data
+        return self
+    }
+    
+    public func upload() -> Promise<GeocoreBinaryDataInfo> {
+        if let id = self.id, let key = self.key, let data = self.data {
+            return Geocore.sharedInstance.promisedUploadPOST(
+                "/objs/\(id)/bins/\(key)",
+                fieldName: "data",
+                fileName: "data",
+                mimeType: self.mimeType,
+                fileContents: data)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting both key and data")) }
+        }
+    }
+    
+    public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
+        if let path = buildPath("/objs", withSubPath: "/bins") {
+            return Geocore.sharedInstance.promisedGET(path, parameters: nil)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func binary() -> Promise<GeocoreBinaryDataInfo> {
+        if let key = self.key {
+            if let path = buildPath("/objs", withSubPath: "/bins/\(key)") {
+                return Geocore.sharedInstance.promisedGET(path, parameters: nil)
+            } else {
+                return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting key")) }
+        }
+    }
+    
+    public func url() -> Promise<String> {
+        if let key = self.key {
+            if let path = buildPath("/objs", withSubPath: "/bins/\(key)/url") {
+                let promise: Promise<GeocoreGenericResult> = Geocore.sharedInstance.promisedGET(path)
+                return promise.then { result in
+                    if let url = result.json["url"].string {
+                        return Promise { fulfill, reject in fulfill(url) }
+                    } else {
+                        return Promise { fulfill, reject in reject(GeocoreError.UnexpectedResponse(message: "Unexpected result: url not found")) }
+                    }
+                }
+            } else {
+                return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting key")) }
+        }
+    }
+    
+}
+
+// MARK: -
 
 /**
     Information about binary data uploads.
@@ -114,11 +281,48 @@ public class GeocoreBinaryDataInfo: GeocoreInitializableFromJSON {
 
 // MARK: -
 
+public class GeocoreRelationshipOperation {
+    
+    private(set) public var id1: String?
+    private(set) public var id2: String?
+    private(set) public var customData: [String: String?]?
+    
+    public func withObject1Id(id1: String) -> GeocoreRelationshipOperation {
+        self.id1 = id1
+        return self
+    }
+    
+    public func withObject2Id(id2: String) -> GeocoreRelationshipOperation {
+        self.id2 = id2
+        return self
+    }
+    
+    public func withCustomData(customData: [String: String?]) -> GeocoreRelationshipOperation {
+        self.customData = customData
+        return self
+    }
+    
+    public func buildPath(forService: String, withSubPath: String) -> String {
+        if let id1 = self.id1 {
+            if let id2 = self.id2 {
+                return "\(forService)/\(id1)\(withSubPath)/\(id2)";
+            } else {
+                return "\(forService)/\(id1)\(withSubPath)";
+            }
+        } else {
+            return forService;
+        }
+    }
+    
+}
+
+// MARK: -
+
 /**
     Base class of all objects managed by Geocore providing basic properties
     and services.
  */
-public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJSON {
+public class GeocoreObject: GeocoreIdentifiable {
     
     public var sid: Int64?
     public var id: String?
@@ -160,380 +364,65 @@ public class GeocoreObject: GeocoreSerializableToJSON, GeocoreInitializableFromJ
         return dict
     }
     
-    // MARK: Callback version
-    
-    private func doWithSid<T>(errorMessage: String, callback: (GeocoreResult<T>) -> Void, closure: (Int64)->Void) {
-        if let sid = self.sid {
-            closure(sid)
-        } else {
-            callback(.Failure(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": errorMessage])))
-        }
-    }
-    
-    public class func get(id: String, callback: (GeocoreResult<GeocoreObject>) -> Void) {
-        Geocore.sharedInstance.GET("/objs/\(id)", callback: callback)
-    }
-    
-    func delete<T: GeocoreInitializableFromJSON>(path: String, callback: (GeocoreResult<T>) -> Void) {
-        self.doWithSid("Unsaved object cannot be deleted", callback: callback) { (sid) -> Void in
-            Geocore.sharedInstance.DELETE("/\(path)/\(sid)", callback: callback)
-        }
-    }
-    
-    public func upload(key: String, data: NSData, mimeType: String, callback: (GeocoreResult<GeocoreBinaryDataInfo>) -> Void) {
-        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
-            Geocore.sharedInstance.uploadPOST("/objs/\(sid)/bins/\(key)", parameters: nil, fieldName: "data", fileName: "data", mimeType: mimeType, fileContents: data, callback: callback)
-        }
-    }
-    
-    public func binaries(callback: (GeocoreResult<[GeocoreBinaryDataInfo]>) -> Void) {
-        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
-            Geocore.sharedInstance.GET("/objs/\(sid)/bins", parameters: nil, callback: callback)
-        }
-    }
-    
-    public func binary(key: String, callback: (GeocoreResult<GeocoreBinaryDataInfo>) -> Void) {
-        self.doWithSid("Unsaved object cannot have binary data", callback: callback) { (sid) -> Void in
-            Geocore.sharedInstance.GET("/objs/\(sid)/bins/\(key)/url", parameters: nil, callback: callback)
-        }
-    }
-    
-    // MARK: Promise version
-    
-    private func doWithSid<T>(errorMessage: String, closure: (Int64)->Promise<T>) -> Promise<T> {
-        if let sid = self.sid {
-            return closure(sid)
-        } else {
-            return Promise { (fulfiller, rejecter) in
-                rejecter(NSError(domain: GeocoreErrorDomain, code: GeocoreError.INVALID_PARAMETER.rawValue, userInfo: ["message": "Unsaved object cannot be deleted"]))
-            }
-        }
+    public class func query() -> GeocoreObjectQuery {
+        return GeocoreObjectQuery()
     }
     
     public class func get(id: String) -> Promise<GeocoreObject> {
-        return Geocore.sharedInstance.promisedGET("/objs/\(id)")
+        return GeocoreObjectQuery().withId(id).get();
     }
     
-    func delete<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
-        return self.doWithSid("Unsaved object cannot be deleted") { (sid) -> Promise<T> in
-            return Geocore.sharedInstance.promisedDELETE("/\(path)/\(sid)")
-        }
+    public func save() -> Promise<GeocoreObject> {
+        return GeocoreObjectOperation().save(self, forService: "/objs")
+    }
+    
+    public func delete() -> Promise<GeocoreObject> {
+        return GeocoreObjectOperation().delete(self, forService: "/objs")
     }
     
     public func upload(key: String, data: NSData, mimeType: String) -> Promise<GeocoreBinaryDataInfo> {
-        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<GeocoreBinaryDataInfo> in
-            return Geocore.sharedInstance.promisedUploadPOST("/objs/\(sid)/bins/\(key)", parameters: nil, fieldName: "data", fileName: "data", mimeType: mimeType, fileContents: data)
+        if let id = self.id {
+            return GeocoreObjectBinaryOperation()
+                .withId(id)
+                .withKey(key)
+                .withMimeType(mimeType)
+                .withData(data)
+                .upload()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object cannot upload binaries")) }
         }
     }
     
     public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
-        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<[GeocoreBinaryDataInfo]> in
-            return Geocore.sharedInstance.promisedGET("/objs/\(sid)/bins", parameters: nil)
+        if let id = self.id {
+            return GeocoreObjectBinaryOperation()
+                .withId(id)
+                .binaries()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
     }
     
     public func binary(key: String) -> Promise<GeocoreBinaryDataInfo> {
-        return self.doWithSid("Unsaved object cannot have binary data") { (sid) -> Promise<GeocoreBinaryDataInfo> in
-            return Geocore.sharedInstance.promisedGET("/objs/\(sid)/bins/\(key)/url", parameters: nil)
-        }
-    }
-    
-}
-
-// MARK: -
-
-public enum GeocoreTagType: String {
-    case SYSTEM_TAG = "SYSTEM_TAG"
-    case USER_TAG = "USER_TAG"
-}
-
-public class GeocoreTag: GeocoreObject {
-    
-    public var type: GeocoreTagType?
-    
-    public override init() {
-        super.init()
-    }
-    
-    public required init(_ json: JSON) {
-        if let type = json["type"].string { self.type = GeocoreTagType(rawValue: type) }
-        super.init(json)
-    }
-    
-    public override func toDictionary() -> [String : AnyObject] {
-        var dict = super.toDictionary()
-        if let type = self.type { dict["type"] = type.rawValue }
-        return dict
-    }
-}
-
-// MARK: -
-
-public class GeocoreTaggable: GeocoreObject {
-    
-    public var tags: [GeocoreTag]?
-    
-    var tagIds: [String]?
-    var tagNames: [String]?
-    var tagSids: [Int64]?
-    
-    public override init() {
-        super.init()
-    }
-    
-    public required init(_ json: JSON) {
-        if let tagsJSON = json["tags"].array {
-            self.tags = tagsJSON.map({ GeocoreTag($0) })
-        }
-        super.init(json)
-    }
-    
-    public override func toDictionary() -> [String : AnyObject] {
-        return super.toDictionary()
-    }
-    
-    public func tag(tagIdsOrNames: [String]) {
-        for tagIdOrName in tagIdsOrNames {
-            // for now, assume that if the tag starts with 'TAG', it's a tag id, otherwise it's a name
-            if tagIdOrName.hasPrefix("TAG") {
-                if self.tagIds == nil {
-                   self.tagIds = [tagIdOrName]
-                } else {
-                   self.tagIds?.append(tagIdOrName)
-                }
-            } else {
-                if self.tagNames == nil {
-                    self.tagNames = [tagIdOrName]
-                } else {
-                    self.tagNames?.append(tagIdOrName)
-                }
-            }
-        }
-    }
-    
-    func resolveTagParameters() -> GeocoreTagParameters? {
-        if self.tagIds != nil || self.tagNames != nil {
-            let params = GeocoreTagParameters()
-            if let tagIds = self.tagIds {
-                params.tagIds(tagIds)
-            }
-            if let tagNames = self.tagNames {
-                params.tagNames(tagNames)
-            }
-            return params
+        if let id = self.id {
+            return GeocoreObjectBinaryOperation()
+                .withId(id)
+                .withKey(key)
+                .binary()
         } else {
-            return nil
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
     }
     
-    func savePath(serviceName: String) -> String {
-        if let sid = self.sid {
-            return "/\(serviceName)/\(sid)"
+    public func url(key: String) -> Promise<String> {
+        if let id = self.id {
+            return GeocoreObjectBinaryOperation()
+                .withId(id)
+                .withKey(key)
+                .url()
         } else {
-            return "/\(serviceName)"
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
-    }
-    
-    func save<T: GeocoreInitializableFromJSON>(path: String, callback: (GeocoreResult<T>) -> Void) {
-        if let params = resolveTagParameters() {
-            Geocore.sharedInstance.POST(savePath(path), parameters: params.toDictionary(), body: self.toDictionary(), callback: callback)
-        } else {
-            Geocore.sharedInstance.POST(savePath(path), parameters: self.toDictionary(), callback: callback)
-        }
-    }
-    
-    func save<T: GeocoreInitializableFromJSON>(path: String) -> Promise<T> {
-        if let params = resolveTagParameters() {
-            return Geocore.sharedInstance.promisedPOST(savePath(path), parameters: params.toDictionary(), body: self.toDictionary())
-        } else {
-            return Geocore.sharedInstance.promisedPOST(savePath(path), parameters: self.toDictionary())
-        }
-    }
-    
-}
-
-// MARK: -
-
-public class GeocoreUser: GeocoreTaggable {
-    
-    public var password: String?
-    public var email: String?
-    private(set) public var lastLocationTime: NSDate?
-    private(set) public var lastLocation: GeocorePoint?
-    var groupIds: [String]?
-    
-    public override init() {
-        super.init()
-    }
-    
-    public required init(_ json: JSON) {
-        self.email = json["email"].string
-        self.lastLocationTime = NSDate.fromGeocoreFormattedString(json["lastLocationTime"].string)
-        self.lastLocation = GeocorePoint(json["lastLocation"])
-        super.init(json)
-    }
-    
-    public override func toDictionary() -> [String: AnyObject] {
-        var dict = super.toDictionary()
-        if let password = self.password { dict["password"] = password }
-        if let email = self.email { dict["email"] = email }
-        return dict
-    }
-    
-    private func registerParams() -> [String: AnyObject]? {
-        var params = [String: AnyObject]()
-        if let groupIds = self.groupIds { params["group_ids"] = groupIds.joinWithSeparator(",") }
-        if let tagParams = resolveTagParameters() { params += tagParams.toDictionary() }
-        return params.count > 0 ? params : nil
-    }
-    
-    private class func userIdWithSuffix(suffix: String) -> String {
-        if let projectId = Geocore.sharedInstance.projectId {
-            if projectId.hasPrefix("PRO") {
-                // user ID pattern: USE-[project_suffix]-[user_id_suffix]
-                return "USE\(projectId.substringFromIndex(projectId.startIndex.advancedBy(3)))-\(suffix)"
-            } else {
-                return suffix
-            }
-        } else {
-            return suffix
-        }
-    }
-    
-    public class func defaultName() -> String {
-        #if os(iOS)
-            #if (arch(i386) || arch(x86_64))
-                // iOS simulator
-                return "IOS_SIMULATOR"
-                #else
-                // iOS device
-                return UIDevice.currentDevice().identifierForVendor!.UUIDString
-            #endif
-            #else
-            // TODO: generate ID on OSX based on user's device ID
-            return "DEFAULT"
-        #endif
-    }
-    
-    public class func defaultId() -> String {
-        return userIdWithSuffix(defaultName())
-    }
-    
-    public class func defaultEmail() -> String {
-        return "\(defaultName())@geocore.jp"
-    }
-    
-    public class func defaultPassword() -> String {
-        return String(defaultId().characters.reverse())
-    }
-    
-    public class func defaultUser() -> GeocoreUser {
-        let user = GeocoreUser()
-        user.id = GeocoreUser.defaultId()
-        user.name = GeocoreUser.defaultName()
-        user.email = GeocoreUser.defaultEmail()
-        user.password = GeocoreUser.defaultPassword()
-        return user
-    }
-    
-    // MARK: Callback version
-    
-    public func register(callback: (GeocoreResult<GeocoreUser>) -> Void) {
-        Geocore.sharedInstance.POST("/register", parameters: registerParams(), body: self.toDictionary(), callback: callback)
-    }
-    
-    public func save(callback: (GeocoreResult<GeocoreUser>) -> Void) {
-        super.save("users", callback: callback)
-    }
-    
-    // MARK: Promise version
-    
-    public func register() -> Promise<GeocoreUser> {
-        return Geocore.sharedInstance.promisedPOST("/register", parameters: registerParams(), body: self.toDictionary())
-    }
-    
-    public func save() -> Promise<GeocoreUser> {
-        return super.save("users")
-    }
-        
-}
-
-// MARK: -
-
-public class GeocorePlace: GeocoreTaggable {
-    
-    public var shortName: String?
-    public var shortDescription: String?
-    public var point: GeocorePoint?
-    public var distanceLimit: Float?
-    
-    public override init() {
-        super.init()
-    }
-    
-    public required init(_ json: JSON) {
-        self.shortName = json["shortName"].string
-        self.shortDescription = json["shortDescription"].string
-        self.point = GeocorePoint(json["point"])
-        self.distanceLimit = json["distanceLimit"].float
-        super.init(json)
-    }
-    
-    public override func toDictionary() -> [String : AnyObject] {
-        var dict = super.toDictionary()
-        if let shortName = self.shortName { dict["shortName"] = shortName }
-        if let shortDescription = self.shortDescription { dict["shortDescription"] = shortDescription }
-        if let point = self.point { dict["point"] = point.toDictionary() }
-        if let distanceLimit = self.distanceLimit { dict["distanceLimit"] = distanceLimit }
-        return dict
-    }
-    
-    // MARK: Callback version
-    
-    public func save(callback: (GeocoreResult<GeocorePlace>) -> Void) {
-        super.save("places", callback: callback)
-    }
-    
-    public class func get(id: String, callback: (GeocoreResult<GeocorePlace>) -> Void) {
-        Geocore.sharedInstance.GET("/places/\(id)", callback: callback)
-    }
-    
-    public class func get(callback: (GeocoreResult<[GeocorePlace]>) -> Void) {
-        Geocore.sharedInstance.GET("/places", callback: callback)
-    }
-    
-    public class func get(minLat minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, callback: (GeocoreResult<GeocorePlace>) -> Void) {
-        Geocore.sharedInstance.GET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)", callback: callback)
-    }
-    
-    public func delete(callback: (GeocoreResult<GeocorePlace>) -> Void) {
-        super.delete("/places", callback: callback)
-    }
-    
-    // MARK: Promise version
-    
-    public func save() -> Promise<GeocorePlace> {
-        return super.save("places")
-    }
-    
-    public class func get(id: String) -> Promise<GeocorePlace> {
-        return Geocore.sharedInstance.promisedGET("/places/\(id)")
-    }
-    
-    public class func get() -> Promise<[GeocorePlace]> {
-        return Geocore.sharedInstance.promisedGET("/places")
-    }
-    
-    public class func get(minLat minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) -> Promise<[GeocorePlace]> {
-        return Geocore.sharedInstance.promisedGET("/places/search/within/rect?max_lat=\(maxLat)&min_lon=\(minLon)&min_lat=\(minLat)&max_lon=\(maxLon)")
-    }
-    
-    public class func get(centerLat centerLat: Double, centerLon: Double) -> Promise<[GeocorePlace]> {
-        return Geocore.sharedInstance.promisedGET("/places/search/nearest?lat=\(centerLat)&lon=\(centerLon)")
-    }
-    
-    public func delete() -> Promise<GeocorePlace> {
-        return super.delete("/places")
     }
     
 }

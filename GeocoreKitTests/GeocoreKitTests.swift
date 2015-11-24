@@ -39,31 +39,31 @@ class GeocoreKitTests: XCTestCase {
     func testA1_loginFailure() {
         let expectation = expectationWithDescription("Login failure expectation")
         
-        let _:() = Geocore.sharedInstance
+        Geocore.sharedInstance
             .login("dummy_userid", password: "dummy_password")
             .error { error in
-                XCTAssert(error.code == GeocoreError.SERVER_ERROR.rawValue)
-                if let serverCode = error.userInfo?["code"] as? String {
-                    XCTAssert(serverCode == "Auth.0001")
-                } else {
+                switch error {
+                case GeocoreError.ServerError(let code, _):
+                    XCTAssert(code == "Auth.0001")
+                default:
                     XCTFail("Unexpected server error: \(error)")
                 }
                 expectation.fulfill()
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for failed login = \(error)")
+            print("Error waiting for failed login = \(error)")
         })
     }
     
     func testA2_loginSuccessful() {
         let expectation = expectationWithDescription("Login successful expectation")
         
-        let _:() = Geocore.sharedInstance
+        Geocore.sharedInstance
             .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
             .then { (accessToken: String) -> Void in
-                println("Access Token = \(accessToken)")
-                XCTAssert(count(accessToken) > 0)
+                print("Access Token = \(accessToken)")
+                XCTAssert(accessToken.characters.count > 0)
                 expectation.fulfill()
             }
             .error { error in
@@ -72,7 +72,7 @@ class GeocoreKitTests: XCTestCase {
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for successful login = \(error)")
+            print("Error waiting for successful login = \(error)")
         })
     }
     
@@ -81,7 +81,7 @@ class GeocoreKitTests: XCTestCase {
     func testB1_getObject() {
         let expectation = expectationWithDescription("Get single object expectation")
         
-        let _:() = GeocoreObject.get(GEOCORE_USERID)
+        GeocoreObject.get(GEOCORE_USERID)
             .then { (object: GeocoreObject) -> Void in
                 XCTAssertEqual(object.id!, GEOCORE_USERID)
                 expectation.fulfill()
@@ -92,7 +92,7 @@ class GeocoreKitTests: XCTestCase {
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for single object = \(error)")
+            print("Error waiting for single object = \(error)")
         })
     }
     
@@ -107,13 +107,14 @@ class GeocoreKitTests: XCTestCase {
         place.id = PLACE_TEST_1_ID
         place.name = PLACE_TEST_1_NAME
         place.point = PLACE_TEST_1_PT
-        place.tag(tags)
-        let _:() = place.save()
+        place
+            .tag(tags)
+            .save()
             .then { (place: GeocorePlace) -> Void in
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 XCTAssertEqual(place.name!, PLACE_TEST_1_NAME)
                 for tag in place.tags! {
-                    if find(tags, tag.name!) == nil {
+                    if  tags.indexOf(tag.name!) == nil {
                         XCTFail("Unexpected tag: \(tag.name!)")
                     }
                 }
@@ -125,7 +126,7 @@ class GeocoreKitTests: XCTestCase {
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for place creation = \(error)")
+            print("Error waiting for place creation = \(error)")
         })
     }
     
@@ -134,7 +135,7 @@ class GeocoreKitTests: XCTestCase {
         
         let newName = "Test Swift 2"
         
-        let _:() = GeocorePlace.get(PLACE_TEST_1_ID)
+        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 place.name = newName
                 return place.save()
@@ -150,14 +151,14 @@ class GeocoreKitTests: XCTestCase {
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for place update = \(error)")
+            print("Error waiting for place update = \(error)")
         })
     }
     
     func testC3_deletePlace() {
         let expectation = expectationWithDescription("Delete place expectation")
         
-        let _:() = GeocorePlace.get(PLACE_TEST_1_ID)
+        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 return place.delete()
@@ -172,29 +173,29 @@ class GeocoreKitTests: XCTestCase {
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for place delete = \(error)")
+            print("Error waiting for place delete = \(error)")
         })
     }
     
     func testC3_deletePlaceConfirm() {
         let expectation = expectationWithDescription("Delete place confirm expectation")
         
-        let _:() = GeocorePlace.get(PLACE_TEST_1_ID)
+        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Void in
                 XCTFail("Deleted place found, shouldn't happen")
             }
             .error { error in
-                XCTAssert(error.code == GeocoreError.SERVER_ERROR.rawValue)
-                if let serverCode = error.userInfo?["code"] as? String {
-                    XCTAssert(serverCode == "General.0011")
-                } else {
+                switch error {
+                case GeocoreError.ServerError(let code, _):
+                    XCTAssert(code == "General.0011")
+                default:
                     XCTFail("Unexpected server error: \(error)")
                 }
                 expectation.fulfill()
             }
         
         waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
-            println("Error waiting for place delete confirmation = \(error)")
+            print("Error waiting for place delete confirmation = \(error)")
         })
     }
     

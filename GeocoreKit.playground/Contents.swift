@@ -1,4 +1,13 @@
 import UIKit
 
-let projectId = "PRO-TEST-1"
-println(projectId.substringFromIndex(advance(projectId.startIndex, 3)))
+func test() -> [String: String] {
+    return [String: String]()
+}
+
+var baba = test()
+baba["bubu"] = "bebe"
+
+if let bebe = baba["bubu"] {
+    print(bebe)
+}
+    
