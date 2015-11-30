@@ -10,6 +10,9 @@ import Foundation
 import Alamofire
 import SwiftyJSON
 import PromiseKit
+#if os(iOS)
+    import UIKit
+#endif
 
 public class GeocoreUserOperation: GeocoreTaggableOperation {
     
@@ -29,13 +32,9 @@ public class GeocoreUserOperation: GeocoreTaggableOperation {
     
     public func register(user: GeocoreUser, callback: (GeocoreResult<GeocoreUser>) -> Void) {
         // TODO: a bit clumsy, but will do for now
-        let params = buildQueryParameters()
-        if params.count > 0 {
-            Geocore.sharedInstance.POST("/register", parameters: params, body: user.toDictionary(), callback: callback)
-        } else {
-            Geocore.sharedInstance.POST("/register", parameters: nil, body: user.toDictionary(), callback: callback)
-        }
-        
+        var params = buildQueryParameters()
+        params["project_id"] = Geocore.sharedInstance.projectId
+        Geocore.sharedInstance.POST("/register", parameters: params, body: user.toDictionary(), callback: callback)
     }
     
     public func register(user: GeocoreUser) -> Promise<GeocoreUser> {
