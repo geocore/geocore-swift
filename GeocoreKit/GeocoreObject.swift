@@ -12,6 +12,7 @@ import PromiseKit
 import Alamofire
 #if os(iOS)
     import UIKit
+    import AlamofireImage
 #endif
 
 // MARK: - Object Operations and Queries
@@ -150,6 +151,10 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
         }
     }
     
+    public func all<T: GeocoreInitializableFromJSON>(forService: String) -> Promise<[T]> {
+        return Geocore.sharedInstance.promisedGET(buildPath(forService))
+    }
+    
     public func get() -> Promise<GeocoreObject> {
         return self.get("/objs")
     }
@@ -212,6 +217,7 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
     }
     
     public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
+        // TODO: FIX THIS: this probably wouldn't work as the server returns an array of string (binary keys)
         if let path = buildPath("/objs", withSubPath: "/bins") {
             return Geocore.sharedInstance.promisedGET(path, parameters: nil)
         } else {
@@ -221,7 +227,7 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
     
     public func binary() -> Promise<GeocoreBinaryDataInfo> {
         if let key = self.key {
-            if let path = buildPath("/objs", withSubPath: "/bins/\(key)") {
+            if let path = buildPath("/objs", withSubPath: "/bins/\(key)/url") {
                 return Geocore.sharedInstance.promisedGET(path, parameters: nil)
             } else {
                 return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
@@ -232,23 +238,69 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
     }
     
     public func url() -> Promise<String> {
-        if let key = self.key {
-            if let path = buildPath("/objs", withSubPath: "/bins/\(key)/url") {
-                let promise: Promise<GeocoreGenericResult> = Geocore.sharedInstance.promisedGET(path)
-                return promise.then { result in
-                    if let url = result.json["url"].string {
-                        return Promise { fulfill, reject in fulfill(url) }
-                    } else {
-                        return Promise { fulfill, reject in reject(GeocoreError.UnexpectedResponse(message: "Unexpected result: url not found")) }
-                    }
-                }
-            } else {
-                return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
-            }
-        } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting key")) }
+        return self.binary().then { (binaryDataInfo) -> Promise<String> in
+            return Promise(binaryDataInfo.url!)
         }
     }
+    
+#if os(iOS)
+    public func image() -> Promise<UIImage> {
+        return Promise { fulfill, reject in
+            self.url()
+                .then { (url) -> Void in
+                    // TODO: should support https!
+                    // for now just replace https with http
+                    var finalUrl = url
+                    if (url.hasPrefix("https")) {
+                        finalUrl = "http\((url as NSString).substringFromIndex(5))"
+                    }
+                    //print("url -> \(finalUrl)")
+                    Alamofire.request(.GET, finalUrl).responseImage { response in
+                        if let image = response.result.value {
+                            fulfill(image)
+                        } else if let error = response.result.error {
+                            reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: \(error)"))
+                        } else {
+                            reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: unknown error"))
+                        }
+                    }
+                }
+                .error { error in
+                    reject(error)
+                }
+        }
+    }
+    
+    public func image<T>(transform: (String?, GeocoreBinaryDataInfo, UIImage) -> T) -> Promise<T> {
+        return Promise { fulfill, reject in
+            self.binary()
+                .then { (binaryDataInfo) -> Void in
+                    print("binaryDataInfo -> \(binaryDataInfo)")
+                    if let url = binaryDataInfo.url {
+                        var finalUrl = url
+                        if (url.hasPrefix("https")) {
+                            finalUrl = "http\((url as NSString).substringFromIndex(5))"
+                        }
+                        print("url -> \(finalUrl)")
+                        Alamofire.request(.GET, finalUrl).responseImage { response in
+                            if let image = response.result.value {
+                                fulfill(transform(self.id, binaryDataInfo, image))
+                            } else if let error = response.result.error {
+                                reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: \(error)"))
+                            } else {
+                                reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: unknown error"))
+                            }
+                        }
+                    } else {
+                        reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: URL unavailable"))
+                    }
+                }
+                .error { error in
+                    reject(error)
+                }
+        }
+    }
+#endif
     
 }
 
@@ -364,8 +416,12 @@ public class GeocoreObject: GeocoreIdentifiable {
         return dict
     }
     
-    public class func query() -> GeocoreObjectQuery {
-        return GeocoreObjectQuery()
+    public func query() -> GeocoreObjectQuery {
+        if let id = self.id {
+            return GeocoreObjectQuery().withId(id)
+        } else {
+            return GeocoreObjectQuery()
+        }
     }
     
     public class func get(id: String) -> Promise<GeocoreObject> {
@@ -413,6 +469,19 @@ public class GeocoreObject: GeocoreIdentifiable {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
     }
+
+#if os(iOS)
+    public func image(key: String) -> Promise<UIImage> {
+        if let id = self.id {
+            return GeocoreObjectBinaryOperation()
+                .withId(id)
+                .withKey(key)
+                .image()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
+        }
+    }
+#endif
     
     public func url(key: String) -> Promise<String> {
         if let id = self.id {
@@ -424,5 +493,28 @@ public class GeocoreObject: GeocoreIdentifiable {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
     }
+    
+}
+
+public class GeocoreRelationship: GeocoreInitializableFromJSON, GeocoreSerializableToJSON {
+    
+    private(set) public var updateTime: NSDate?
+    public var customData: [String: String?]?
+    
+    public init() {
+    }
+    
+    public required init(_ json: JSON) {
+        self.updateTime = NSDate.fromGeocoreFormattedString(json["updateTime"].string)
+        self.customData = json["customData"].dictionary?.map { ($0, $1.string) }
+    }
+    
+    public func toDictionary() -> [String: AnyObject] {
+        // wish this can be automatic
+        var dict = [String: AnyObject]()
+        if let customData = self.customData { dict["customData"] = customData.filter{ $1 != nil }.map{ ($0, $1!) } }
+        return dict
+    }
+
     
 }
