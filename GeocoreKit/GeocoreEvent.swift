@@ -26,7 +26,7 @@ public enum GeocoreUserEventRelationshipType: Int {
     case Custom08 = 11
     case Custom09 = 12
     case Custom10 = 13
-    case Unknown = 9223372036854775807
+    case Unknown = 9999
 }
 
 public class GeocoreEventQuery: GeocoreObjectQuery {

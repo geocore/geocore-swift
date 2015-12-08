@@ -216,10 +216,16 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
         }
     }
     
-    public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
-        // TODO: FIX THIS: this probably wouldn't work as the server returns an array of string (binary keys)
+    public func binaries() -> Promise<[String]> {
         if let path = buildPath("/objs", withSubPath: "/bins") {
-            return Geocore.sharedInstance.promisedGET(path, parameters: nil)
+            let generics: Promise<[GeocoreGenericResult]> = Geocore.sharedInstance.promisedGET(path, parameters: nil)
+            return generics.then { (generics) -> [String] in
+                var bins = [String]()
+                for generic in generics {
+                    bins.append(generic.json.string!)
+                }
+                return bins
+            }
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
         }
@@ -275,13 +281,13 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
         return Promise { fulfill, reject in
             self.binary()
                 .then { (binaryDataInfo) -> Void in
-                    print("binaryDataInfo -> \(binaryDataInfo)")
+                    //print("binaryDataInfo -> \(binaryDataInfo)")
                     if let url = binaryDataInfo.url {
                         var finalUrl = url
                         if (url.hasPrefix("https")) {
                             finalUrl = "http\((url as NSString).substringFromIndex(5))"
                         }
-                        print("url -> \(finalUrl)")
+                        //print("url -> \(finalUrl)")
                         Alamofire.request(.GET, finalUrl).responseImage { response in
                             if let image = response.result.value {
                                 fulfill(transform(self.id, binaryDataInfo, image))
@@ -449,7 +455,7 @@ public class GeocoreObject: GeocoreIdentifiable {
         }
     }
     
-    public func binaries() -> Promise<[GeocoreBinaryDataInfo]> {
+    public func binaries() -> Promise<[String]> {
         if let id = self.id {
             return GeocoreObjectBinaryOperation()
                 .withId(id)
