@@ -183,6 +183,7 @@ public class Geocore: NSObject {
     
     public private(set) var baseURL: String?
     public private(set) var projectId: String?
+    public private(set) var userId: String?
     private var token: String?
     
     private override init() {
@@ -565,6 +566,7 @@ public class Geocore: NSObject {
                 case .Success(let value):
                     self.token = value.json["token"].string
                     if let token = self.token {
+                        self.userId = userId
                         callback(GeocoreResult(token))
                     } else {
                         callback(.Failure(GeocoreError.InvalidState))

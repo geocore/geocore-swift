@@ -111,6 +111,65 @@ public class GeocorePlace: GeocoreTaggable {
         return GeocoreObjectOperation().delete(self, forService: "/places")
     }
     
+    public func checkin(latitude latitude: Double, longitude: Double) -> Promise<GeocorePlaceCheckin> {
+        let checkin = GeocorePlaceCheckin()
+        checkin.userId = Geocore.sharedInstance.userId
+        checkin.placeId = self.id
+        checkin.latitude = latitude
+        checkin.longitude = longitude
+        checkin.accuracy = 0
+        if let placeId = self.id {
+            return Geocore.sharedInstance.promisedPOST("/places/\(placeId)/checkins", parameters: nil, body: checkin.toDictionary())
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+}
+
+public class GeocorePlaceCheckin: GeocoreInitializableFromJSON, GeocoreSerializableToJSON {
+    
+    public var userId: String?
+    public var placeId: String?
+    public var timestamp: UInt64?
+    public var latitude: Double?
+    public var longitude: Double?
+    public var accuracy: Double?
+    public var date: NSDate?
+    
+    public init() {
+    }
+
+    public required init(_ json: JSON) {
+        self.userId = json["userId"].string
+        self.placeId = json["placeId"].string
+        self.timestamp = json["timestamp"].uInt64
+        if let timestamp = self.timestamp {
+            self.date = NSDate(timeIntervalSince1970: Double(timestamp)/1000.0)
+        }
+        self.latitude = json["latitude"].double
+        self.longitude = json["longitude"].double
+        self.accuracy = json["accuracy"].double
+    }
+    
+    public func toDictionary() -> [String: AnyObject] {
+        var dict = [String: AnyObject]()
+        if let userId = self.userId { dict["userId"] = userId }
+        if let placeId = self.placeId { dict["placeId"] = placeId }
+        if let timestamp = self.timestamp { dict["timestamp"] = String(timestamp) }
+        if let date = self.date {
+            dict["timestamp"] = String(UInt64(date.timeIntervalSince1970 * 1000))
+        }
+        if let latitude = self.latitude, longitude = self.longitude {
+            dict["latitude"] = String(latitude)
+            dict["longitude"] = String(longitude)
+        }
+        if let accuracy = self.accuracy {
+            dict["accuracy"] = String(accuracy)
+        }
+        return dict
+    }
+    
 }
 
 public class GeocorePlaceEvent: GeocoreRelationship {
