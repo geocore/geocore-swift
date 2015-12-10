@@ -91,7 +91,7 @@ public class GeocoreTaggableOperation: GeocoreObjectOperation {
     
 }
 
-public class GeocoreTaggableQuery: GeocoreObjectOperation {
+public class GeocoreTaggableQuery: GeocoreObjectQuery {
     
     private var tagIds: [String]?
     private var tagNames: [String]?

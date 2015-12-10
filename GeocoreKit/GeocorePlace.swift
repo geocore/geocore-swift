@@ -15,7 +15,7 @@ public class GeocorePlaceOperation: GeocoreTaggableOperation {
     
 }
 
-public class GeocorePlaceQuery: GeocoreObjectQuery {
+public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     public func get() -> Promise<GeocorePlace> {
         return self.get("/places")
@@ -112,6 +112,10 @@ public class GeocorePlace: GeocoreTaggable {
     }
     
     public func checkin(latitude latitude: Double, longitude: Double) -> Promise<GeocorePlaceCheckin> {
+        return self.checkin(latitude: latitude, longitude: longitude, unrestricted: false)
+    }
+    
+    public func checkin(latitude latitude: Double, longitude: Double, unrestricted: Bool) -> Promise<GeocorePlaceCheckin> {
         let checkin = GeocorePlaceCheckin()
         checkin.userId = Geocore.sharedInstance.userId
         checkin.placeId = self.id
@@ -119,7 +123,11 @@ public class GeocorePlace: GeocoreTaggable {
         checkin.longitude = longitude
         checkin.accuracy = 0
         if let placeId = self.id {
-            return Geocore.sharedInstance.promisedPOST("/places/\(placeId)/checkins", parameters: nil, body: checkin.toDictionary())
+            var params: [String: AnyObject]?
+            if unrestricted {
+                params = ["unrestricted": "true"]
+            }
+            return Geocore.sharedInstance.promisedPOST("/places/\(placeId)/checkins", parameters: params, body: checkin.toDictionary())
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
         }

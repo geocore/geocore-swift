@@ -14,6 +14,23 @@ import PromiseKit
     import UIKit
 #endif
 
+public enum GeocoreUserEventRelationshipType: String {
+    case Organizer = "ORGANIZER"
+    case Performer = "PERFORMER"
+    case Participant = "PARTICIPANT"
+    case Attendant = "ATTENDANT"
+    case Custom01 = "CUSTOM01"
+    case Custom02 = "CUSTOM02"
+    case Custom03 = "CUSTOM03"
+    case Custom04 = "CUSTOM04"
+    case Custom05 = "CUSTOM05"
+    case Custom06 = "CUSTOM06"
+    case Custom07 = "CUSTOM07"
+    case Custom08 = "CUSTOM08"
+    case Custom09 = "CUSTOM09"
+    case Custom10 = "CUSTOM10"
+}
+
 public class GeocoreUserOperation: GeocoreTaggableOperation {
     
     private var groupIds: [String]?
@@ -44,6 +61,33 @@ public class GeocoreUserOperation: GeocoreTaggableOperation {
             return Geocore.sharedInstance.promisedPOST(buildPath("/register"), parameters: params, body: user.toDictionary())
         } else {
             return Geocore.sharedInstance.promisedPOST(buildPath("/register"), parameters: user.toDictionary())
+        }
+    }
+    
+}
+
+public class GeocoreUserQuery: GeocoreTaggableQuery {
+    
+    public func get() -> Promise<GeocoreUser> {
+        return self.get("/users")
+    }
+    
+    public func eventRelationships() -> Promise<[GeocoreUserEvent]> {
+        if let userId = self.id {
+            return GeocoreUserEventQuery().withObject1Id(userId).all()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func eventRelationships(event: GeocoreEvent) -> Promise<[GeocoreUserEvent]> {
+        if let userId = self.id {
+            return GeocoreUserEventQuery()
+                .withObject1Id(userId)
+                .withObject2Id(event.id!)
+                .all()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -132,4 +176,177 @@ public class GeocoreUser: GeocoreTaggable {
         return GeocoreObjectOperation().save(self, forService: "/users")
     }
     
+    public func eventRelationships() -> Promise<[GeocoreUserEvent]> {
+        return GeocoreUserQuery().withId(self.id!).eventRelationships()
+    }
+    
+    public func eventRelationships(event: GeocoreEvent) -> Promise<[GeocoreUserEvent]> {
+        return GeocoreUserQuery().withId(self.id!).eventRelationships(event)
+    }
+    
 }
+
+public class GeocoreUserEventOperation: GeocoreRelationshipOperation {
+    
+    private(set) public var relationshipType: GeocoreUserEventRelationshipType?
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withEvent(event: GeocoreEvent) -> Self {
+        super.withObject2Id(event.id!)
+        return self
+    }
+    
+    public func withRelationshipType(relationshipType: GeocoreUserEventRelationshipType) -> Self {
+        self.relationshipType = relationshipType
+        return self
+    }
+    
+    public override func buildPath(forService: String, withSubPath: String) -> String {
+        if let id1 = self.id1, id2 = self.id2, relationshipType = self.relationshipType {
+            return "\(forService)/\(id1)\(withSubPath)/\(id2)/\(relationshipType.rawValue)"
+        } else {
+            return super.buildPath(forService, withSubPath: withSubPath)
+        }
+    }
+    
+    public func save() -> Promise<GeocoreUserEvent> {
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            if let customData = self.customData {
+                return Geocore.sharedInstance.promisedPOST(buildPath("/users", withSubPath: "/events"),
+                    parameters: nil, body: customData.filter{ $1 != nil }.map{ ($0, $1!) })
+            } else {
+                return Geocore.sharedInstance.promisedPOST(buildPath("/users", withSubPath: "/events"),
+                    parameters: nil, body: [String: AnyObject]())
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+    public func organize() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Organizer).save()
+    }
+    
+    public func perform() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Performer).save()
+    }
+    
+    public func participate() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Participant).save()
+    }
+    
+    public func attend() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Attendant).save()
+    }
+    
+    public func leaveAs(relationshipType: GeocoreUserEventRelationshipType) -> Promise<GeocoreUserEvent> {
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            return Geocore.sharedInstance.promisedDELETE(buildPath("/users", withSubPath: "/events"))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+}
+
+public class GeocoreUserEventQuery: GeocoreRelationshipQuery {
+    
+    private(set) public var relationshipType: GeocoreUserEventRelationshipType?
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withEvent(event: GeocoreEvent) -> Self {
+        super.withObject2Id(event.id!)
+        return self
+    }
+    
+    public func withRelationshipType(relationshipType: GeocoreUserEventRelationshipType) -> Self {
+        self.relationshipType = relationshipType
+        return self
+    }
+    
+    public override func buildPath(forService: String, withSubPath: String) -> String {
+        if let id1 = self.id1, id2 = self.id2, relationshipType = self.relationshipType {
+            return "\(forService)/\(id1)\(withSubPath)/\(id2)/\(relationshipType.rawValue)"
+        } else {
+            return super.buildPath(forService, withSubPath: withSubPath)
+        }
+    }
+    
+    public func get() -> Promise<GeocoreUserEvent> {
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            return Geocore.sharedInstance.promisedGET(self.buildPath("/users", withSubPath: "/events"))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+    public func all() -> Promise<[GeocoreUserEvent]> {
+        if self.id1 != nil {
+            return Geocore.sharedInstance.promisedGET(super.buildPath("/users", withSubPath: "/events"))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func organization() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Organizer).get()
+    }
+    
+    public func performance() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Performer).get()
+    }
+    
+    public func participation() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Participant).get()
+    }
+    
+    public func attendance() -> Promise<GeocoreUserEvent> {
+        return withRelationshipType(.Attendant).get()
+    }
+    
+}
+
+public class GeocoreUserEvent: GeocoreRelationship {
+    
+    public var user: GeocoreUser?
+    public var event: GeocoreEvent?
+    public var relationshipType: GeocoreUserEventRelationshipType?
+    
+    public required init(_ json: JSON) {
+        super.init(json)
+        if let pk = json["pk"].dictionary {
+            if let userDict = pk["user"] {
+                self.user = GeocoreUser(userDict)
+            }
+            if let eventDict = pk["event"] {
+                self.event = GeocoreEvent(eventDict)
+            }
+            if let relationshipType = pk["relationship"]?.string {
+                self.relationshipType = GeocoreUserEventRelationshipType(rawValue: relationshipType)!
+            }
+        }
+    }
+    
+    public override func toDictionary() -> [String: AnyObject] {
+        var dict = super.toDictionary()
+        var pk = [String: AnyObject]()
+        pk["user"] = user?.toDictionary()
+        pk["event"] = event?.toDictionary()
+        if let relationshipType = self.relationshipType { pk["relationship"] = relationshipType.rawValue }
+        dict["pk"] = pk
+        return dict
+    }
+    
+    
+    
+}
+
+

@@ -11,24 +11,6 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
-public enum GeocoreUserEventRelationshipType: Int {
-    case Organizer = 0
-    case Performer = 1
-    case Participant = 2
-    case Attendant = 3
-    case Custom01 = 4
-    case Custom02 = 5
-    case Custom03 = 6
-    case Custom04 = 7
-    case Custom05 = 8
-    case Custom06 = 9
-    case Custom07 = 10
-    case Custom08 = 11
-    case Custom09 = 12
-    case Custom10 = 13
-    case Unknown = 9999
-}
-
 public class GeocoreEventQuery: GeocoreObjectQuery {
     
     public func get() -> Promise<GeocoreEvent> {
@@ -96,3 +78,4 @@ public class GeocoreEvent: GeocoreTaggable {
     }
     
 }
+

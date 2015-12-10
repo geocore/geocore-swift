@@ -345,17 +345,17 @@ public class GeocoreRelationshipOperation {
     private(set) public var id2: String?
     private(set) public var customData: [String: String?]?
     
-    public func withObject1Id(id1: String) -> GeocoreRelationshipOperation {
+    public func withObject1Id(id1: String) -> Self {
         self.id1 = id1
         return self
     }
     
-    public func withObject2Id(id2: String) -> GeocoreRelationshipOperation {
+    public func withObject2Id(id2: String) -> Self {
         self.id2 = id2
         return self
     }
     
-    public func withCustomData(customData: [String: String?]) -> GeocoreRelationshipOperation {
+    public func withCustomData(customData: [String: String?]) -> Self {
         self.customData = customData
         return self
     }
@@ -363,14 +363,18 @@ public class GeocoreRelationshipOperation {
     public func buildPath(forService: String, withSubPath: String) -> String {
         if let id1 = self.id1 {
             if let id2 = self.id2 {
-                return "\(forService)/\(id1)\(withSubPath)/\(id2)";
+                return "\(forService)/\(id1)\(withSubPath)/\(id2)"
             } else {
-                return "\(forService)/\(id1)\(withSubPath)";
+                return "\(forService)/\(id1)\(withSubPath)"
             }
         } else {
-            return forService;
+            return forService
         }
     }
+    
+}
+
+public class GeocoreRelationshipQuery: GeocoreRelationshipOperation {
     
 }
 
