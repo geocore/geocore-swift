@@ -17,12 +17,59 @@ public class GeocorePlaceOperation: GeocoreTaggableOperation {
 
 public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
+    private(set) public var centerLatitude: Double?
+    private(set) public var centerLongitude: Double?
+    private(set) public var radius: Double?
+    
+    private(set) public var minimumLatitude: Double?
+    private(set) public var minimumLongitude: Double?
+    private(set) public var maximumLatitude: Double?
+    private(set) public var maximumLongitude: Double?
+    
+    private(set) public var checkinable: Bool?
+    
+    public func withCenter(latitude latitude: Double, longitude: Double) -> Self {
+        self.centerLatitude = latitude
+        self.centerLongitude = longitude
+        return self
+    }
+    
+    public func withRadius(radius: Double) -> Self {
+        self.radius = radius
+        return self
+    }
+    
+    public func withRectangle(minimumLatitude minimumLatitude: Double, minimumLongitude: Double, maximumLatitude: Double, maximumLongitude: Double) -> Self {
+        self.minimumLatitude = minimumLatitude
+        self.minimumLongitude = minimumLongitude
+        self.maximumLatitude = maximumLatitude
+        self.maximumLongitude = maximumLongitude
+        return self
+    }
+    
+    public func onlyCheckinable() -> Self {
+        self.checkinable = true
+        return self
+    }
+    
     public func get() -> Promise<GeocorePlace> {
         return self.get("/places")
     }
     
     public func all() -> Promise<[GeocorePlace]> {
         return self.all("/places")
+    }
+    
+    public func nearest() -> Promise<[GeocorePlace]> {
+        if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
+            var dict = super.buildQueryParameters()
+            dict["lat"] = centerLatitude
+            dict["lon"] = centerLongitude
+            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
+            return Geocore.sharedInstance.promisedGET("/places/search/nearest", parameters: dict)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
+        }
     }
     
     public func events() -> Promise<[GeocoreEvent]> {
