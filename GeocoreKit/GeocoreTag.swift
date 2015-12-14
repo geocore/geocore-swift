@@ -104,7 +104,7 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
      
      - returns: The updated query object to be chain-called.
      */
-    public func withTagIds(tagIds: [String]) -> GeocoreTaggableQuery {
+    public func withTagIds(tagIds: [String]) -> Self {
         self.tagIds = tagIds
         return self
     }
@@ -116,18 +116,18 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
      
      - returns: The updated query object to be chain-called.
      */
-    public func tagNames(tagNames: [String]) -> GeocoreTaggableQuery {
+    public func tagNames(tagNames: [String]) -> Self {
         self.tagNames = tagNames
         return self
     }
     
-    public func withTagDetails() -> GeocoreTaggableQuery {
+    public func withTagDetails() -> Self {
         self.tagDetails = true
         return self
     }
     
     public override func buildQueryParameters() -> [String: AnyObject] {
-        var dict = [String: AnyObject]()
+        var dict = super.buildQueryParameters()
         if let tagIds = self.tagIds { dict["tag_ids"] = tagIds.joinWithSeparator(",") }
         if let tagNames = self.tagNames { dict["tag_names"] = tagNames.joinWithSeparator(",") }
         if tagDetails { dict["tag_detail"] = "true" }
