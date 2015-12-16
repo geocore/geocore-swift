@@ -514,6 +514,13 @@ public class Geocore: NSObject {
         self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
     }
     
+    /**
+        Do an HTTP POST request expecting an multiple result in an array of objects of type T
+     */
+    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (GeocoreResult<[T]>) -> Void) {
+        self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
+    }
+    
     func uploadPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, fieldName: String, fileName: String, mimeType: String, fileContents: NSData, callback: (GeocoreResult<T>) -> Void) {
         self.POST(path, parameters: parameters, body: ["$fileContents": fileContents, "$fileName": fileName, "$fieldName": fieldName, "$mimeType": mimeType], callback: callback)
     }
@@ -524,6 +531,17 @@ public class Geocore: NSObject {
     func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<T> {
         return Promise { (fulfill, reject) in
             self.POST(path, parameters: parameters, body: body) { (result: GeocoreResult<T>) -> Void in
+                result.propagateTo(fulfill, reject: reject)
+            }
+        }
+    }
+    
+    /**
+     Promise multiple results of type T from an HTTP POST request.
+     */
+    func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<[T]> {
+        return Promise { (fulfill, reject) in
+            self.POST(path, parameters: parameters, body: body) { (result: GeocoreResult<[T]>) -> Void in
                 result.propagateTo(fulfill, reject: reject)
             }
         }

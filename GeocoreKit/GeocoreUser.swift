@@ -66,9 +66,28 @@ public class GeocoreUserOperation: GeocoreTaggableOperation {
     
 }
 
+public class GeocoreUserTagOperation: GeocoreTaggableOperation {
+    
+    public func update() -> Promise<[GeocoreTag]> {
+        let params = buildQueryParameters()
+        if params.count > 0 {
+            if let path = buildPath("/users", withSubPath: "/tags") {
+                // body cannot be nil, otherwise params will go to body
+                return Geocore.sharedInstance.promisedPOST(path, parameters: params, body: [String: AnyObject]())
+            } else {
+                return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting tag parameters")) }
+        }
+    }
+    
+}
+
 public class GeocoreUserQuery: GeocoreTaggableQuery {
     
     public func get() -> Promise<GeocoreUser> {
+        
         return self.get("/users")
     }
     
@@ -182,6 +201,10 @@ public class GeocoreUser: GeocoreTaggable {
     
     public func eventRelationships(event: GeocoreEvent) -> Promise<[GeocoreUserEvent]> {
         return GeocoreUserQuery().withId(self.id!).eventRelationships(event)
+    }
+    
+    public func tagOperation() -> GeocoreUserTagOperation {
+        return GeocoreUserTagOperation().withId(self.id!)
     }
     
 }

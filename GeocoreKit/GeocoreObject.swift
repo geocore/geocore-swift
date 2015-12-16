@@ -145,7 +145,7 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     
     public func get<T: GeocoreInitializableFromJSON>(forService: String) -> Promise<T> {
         if id != nil {
-            return Geocore.sharedInstance.promisedGET(buildPath(forService))
+            return Geocore.sharedInstance.promisedGET(buildPath(forService), parameters: buildQueryParameters())
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
         }
