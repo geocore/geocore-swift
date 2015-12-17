@@ -31,6 +31,34 @@ public enum GeocoreUserEventRelationshipType: String {
     case Custom10 = "CUSTOM10"
 }
 
+public enum GeocoreUserPlaceRelationshipType: String {
+    case Creator = "CREATOR"
+    case Owner = "OWNER"
+    case Manager = "MANAGER"
+    case Organizer = "ORGANIZER"
+    case Staff = "STAFF"
+    case Seller = "SELLER"
+    case Agent = "AGENT"
+    case Realtor = "REALTOR"
+    case Follower = "FOLLOWER"
+    case Supporter = "SUPPORTER"
+    case Visitor = "VISITOR"
+    case Customer = "CUSTOMER"
+    case Player = "PLAYER"
+    case Member = "MEMBER"
+    case Buyer = "BUYER"
+    case Custom01 = "CUSTOM01"
+    case Custom02 = "CUSTOM02"
+    case Custom03 = "CUSTOM03"
+    case Custom04 = "CUSTOM04"
+    case Custom05 = "CUSTOM05"
+    case Custom06 = "CUSTOM06"
+    case Custom07 = "CUSTOM07"
+    case Custom08 = "CUSTOM08"
+    case Custom09 = "CUSTOM09"
+    case Custom10 = "CUSTOM10"
+}
+
 public class GeocoreUserOperation: GeocoreTaggableOperation {
     
     private var groupIds: [String]?
@@ -110,6 +138,25 @@ public class GeocoreUserQuery: GeocoreTaggableQuery {
         }
     }
     
+    public func placeRelationships() -> Promise<[GeocoreUserPlace]> {
+        if let userId = self.id {
+            return GeocoreUserPlaceQuery().withObject1Id(userId).all()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func placeRelationships(place: GeocorePlace) -> Promise<[GeocoreUserPlace]> {
+        if let userId = self.id {
+            return GeocoreUserPlaceQuery()
+                .withObject1Id(userId)
+                .withObject2Id(place.id!)
+                .all()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
 }
 
 public class GeocoreUser: GeocoreTaggable {
@@ -118,7 +165,6 @@ public class GeocoreUser: GeocoreTaggable {
     public var email: String?
     private(set) public var lastLocationTime: NSDate?
     private(set) public var lastLocation: GeocorePoint?
-    //var groupIds: [String]?
     
     public override init() {
         super.init()
@@ -201,6 +247,14 @@ public class GeocoreUser: GeocoreTaggable {
     
     public func eventRelationships(event: GeocoreEvent) -> Promise<[GeocoreUserEvent]> {
         return GeocoreUserQuery().withId(self.id!).eventRelationships(event)
+    }
+    
+    public func placeRelationships() -> Promise<[GeocoreUserPlace]> {
+        return GeocoreUserQuery().withId(self.id!).placeRelationships()
+    }
+    
+    public func placeRelationships(place: GeocorePlace) -> Promise<[GeocoreUserPlace]> {
+        return GeocoreUserQuery().withId(self.id!).placeRelationships(place)
     }
     
     public func tagOperation() -> GeocoreUserTagOperation {
@@ -361,15 +415,156 @@ public class GeocoreUserEvent: GeocoreRelationship {
     public override func toDictionary() -> [String: AnyObject] {
         var dict = super.toDictionary()
         var pk = [String: AnyObject]()
-        pk["user"] = user?.toDictionary()
-        pk["event"] = event?.toDictionary()
+        if let user = self.user { pk["user"] = user.toDictionary() }
+        if let event = self.event { pk["event"] = event.toDictionary() }
         if let relationshipType = self.relationshipType { pk["relationship"] = relationshipType.rawValue }
         dict["pk"] = pk
         return dict
     }
     
+}
+
+public class GeocoreUserPlaceOperation: GeocoreRelationshipOperation {
     
+    private(set) public var relationshipType: GeocoreUserPlaceRelationshipType?
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withPlace(place: GeocorePlace) -> Self {
+        super.withObject2Id(place.id!)
+        return self
+    }
+    
+    public func withRelationshipType(relationshipType: GeocoreUserPlaceRelationshipType) -> Self {
+        self.relationshipType = relationshipType
+        return self
+    }
+    
+    public override func buildPath(forService: String, withSubPath: String) -> String {
+        if let id1 = self.id1, id2 = self.id2, relationshipType = self.relationshipType {
+            return "\(forService)/\(id1)\(withSubPath)/\(id2)/\(relationshipType.rawValue)"
+        } else {
+            return super.buildPath(forService, withSubPath: withSubPath)
+        }
+    }
+    
+    public func save() -> Promise<GeocoreUserPlace> {
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            if let customData = self.customData {
+                return Geocore.sharedInstance.promisedPOST(buildPath("/users", withSubPath: "/places"),
+                    parameters: nil, body: customData.filter{ $1 != nil }.map{ ($0, $1!) })
+            } else {
+                return Geocore.sharedInstance.promisedPOST(buildPath("/users", withSubPath: "/places"),
+                    parameters: nil, body: [String: AnyObject]())
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+    public func follow() -> Promise<GeocoreUserPlace> {
+        return withRelationshipType(.Follower).save()
+    }
+    
+    public func leaveAs(relationshipType: GeocoreUserPlaceRelationshipType) -> Promise<GeocoreUserPlace> {
+        self.withRelationshipType(relationshipType)
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            return Geocore.sharedInstance.promisedDELETE(buildPath("/users", withSubPath: "/places"))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+    public func unfollow() -> Promise<GeocoreUserPlace> {
+        return leaveAs(.Follower)
+    }
     
 }
+
+public class GeocoreUserPlaceQuery: GeocoreRelationshipQuery {
+    
+    private(set) public var relationshipType: GeocoreUserPlaceRelationshipType?
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withPlace(place: GeocorePlace) -> Self {
+        super.withObject2Id(place.id!)
+        return self
+    }
+    
+    public func withRelationshipType(relationshipType: GeocoreUserPlaceRelationshipType) -> Self {
+        self.relationshipType = relationshipType
+        return self
+    }
+    
+    public override func buildPath(forService: String, withSubPath: String) -> String {
+        if let id1 = self.id1, id2 = self.id2, relationshipType = self.relationshipType {
+            return "\(forService)/\(id1)\(withSubPath)/\(id2)/\(relationshipType.rawValue)"
+        } else {
+            return super.buildPath(forService, withSubPath: withSubPath)
+        }
+    }
+    
+    public func get() -> Promise<GeocoreUserPlace> {
+        if self.id1 != nil && id2 != nil && self.relationshipType != nil {
+            return Geocore.sharedInstance.promisedGET(self.buildPath("/users", withSubPath: "/places"))
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids & relationship type")) }
+        }
+    }
+    
+    public func all() -> Promise<[GeocoreUserPlace]> {
+        if self.id1 != nil {
+            return Geocore.sharedInstance.promisedGET(super.buildPath("/users", withSubPath: "/places"), parameters: ["output_format": "json.relationship"])
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func asFollower() -> Promise<GeocoreUserPlace> {
+        return withRelationshipType(.Follower).get()
+    }
+    
+}
+
+public class GeocoreUserPlace: GeocoreRelationship {
+    
+    public var user: GeocoreUser?
+    public var place: GeocorePlace?
+    public var relationshipType: GeocoreUserPlaceRelationshipType?
+    
+    public required init(_ json: JSON) {
+        super.init(json)
+        if let pk = json["pk"].dictionary {
+            if let userDict = pk["user"] {
+                self.user = GeocoreUser(userDict)
+            }
+            if let placeDict = pk["place"] {
+                self.place = GeocorePlace(placeDict)
+            }
+            if let relationshipType = pk["relationship"]?.string {
+                self.relationshipType = GeocoreUserPlaceRelationshipType(rawValue: relationshipType)!
+            }
+        }
+    }
+    
+    public override func toDictionary() -> [String: AnyObject] {
+        var dict = super.toDictionary()
+        var pk = [String: AnyObject]()
+        if let user = self.user { pk["user"] = user.toDictionary() }
+        if let place = self.place { pk["place"] = place.toDictionary() }
+        if let relationshipType = self.relationshipType { pk["relationship"] = relationshipType.rawValue }
+        dict["pk"] = pk
+        return dict
+    }
+    
+}
+
 
 
