@@ -95,6 +95,8 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
     
     private var tagIds: [String]?
     private var tagNames: [String]?
+    private var excludedTagIds: [String]?
+    private var excludedTagNames: [String]?
     private var tagDetails = false
     
     /**
@@ -109,6 +111,11 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
         return self
     }
     
+    public func excludeTagIds(tagIds: [String]) -> Self {
+        self.excludedTagIds = tagIds
+        return self
+    }
+    
     /**
      Set tag names to be submitted as request parameter.
      
@@ -116,8 +123,13 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
      
      - returns: The updated query object to be chain-called.
      */
-    public func tagNames(tagNames: [String]) -> Self {
+    public func withTagNames(tagNames: [String]) -> Self {
         self.tagNames = tagNames
+        return self
+    }
+    
+    public func excludeTagNames(tagNames: [String]) -> Self {
+        self.excludedTagNames = tagNames
         return self
     }
     
@@ -130,6 +142,8 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
         var dict = super.buildQueryParameters()
         if let tagIds = self.tagIds { dict["tag_ids"] = tagIds.joinWithSeparator(",") }
         if let tagNames = self.tagNames { dict["tag_names"] = tagNames.joinWithSeparator(",") }
+        if let excludedTagIds = self.excludedTagIds { dict["excl_tag_ids"] = excludedTagIds.joinWithSeparator(",") }
+        if let excludedTagNames = self.excludedTagNames { dict["excl_tag_names"] = excludedTagNames.joinWithSeparator(",") }
         if tagDetails { dict["tag_detail"] = "true" }
         return dict
     }

@@ -94,6 +94,8 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     private(set) public var customDataKey: String?
     private(set) public var page: Int?
     private(set) public var numberPerPage: Int?
+    private(set) public var recentlyCreated: Bool?
+    private(set) public var recentlyUpdated: Bool?
     
     public override init() {
         self.unlimitedRecords = false
@@ -125,6 +127,16 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
         return self
     }
     
+    public func orderByRecentlyCreated() -> Self {
+        self.recentlyCreated = true
+        return self
+    }
+    
+    public func orderByRecentlyUpdated() -> Self {
+        self.recentlyUpdated = true
+        return self
+    }
+    
     public override func buildQueryParameters() -> [String: AnyObject] {
         var dict = super.buildQueryParameters()
         if unlimitedRecords {
@@ -140,6 +152,12 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
         if let fromDate = self.fromDate {
             dict["from_date"] = NSDateFormatter.dateFormatterForGeocore().stringFromDate(fromDate)
         }
+        if let recentlyCreated = self.recentlyCreated {
+            dict["recent_created"] = recentlyCreated
+        }
+        if let recentlyUpdated = self.recentlyUpdated {
+            dict["recent_updated"] = recentlyUpdated
+        }
         return dict
     }
     
@@ -152,7 +170,7 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     }
     
     public func all<T: GeocoreInitializableFromJSON>(forService: String) -> Promise<[T]> {
-        return Geocore.sharedInstance.promisedGET(buildPath(forService))
+        return Geocore.sharedInstance.promisedGET(buildPath(forService), parameters: buildQueryParameters())
     }
     
     public func get() -> Promise<GeocoreObject> {
