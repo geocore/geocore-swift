@@ -24,6 +24,8 @@ import Alamofire
 public class GeocoreObjectOperation {
     
     private(set) public var id: String?
+    private(set) public var customDataValue: String?
+    private(set) public var customDataKey: String?
     
     public init() {
     }
@@ -37,6 +39,17 @@ public class GeocoreObjectOperation {
      */
     public func withId(id: String) -> Self {
         self.id = id
+        return self
+    }
+    
+    public func withCustomDataKey(customDataKey: String) -> Self {
+        self.customDataKey = customDataKey
+        return self
+    }
+    
+    public func havingCustomData(value: String, forKey: String) -> Self {
+        self.customDataValue = value
+        self.customDataKey = forKey
         return self
     }
     
@@ -83,6 +96,14 @@ public class GeocoreObjectOperation {
         }
     }
     
+    public func deleteCustomData() -> Promise<GeocoreObject> {
+        if let _ = self.id, customDataKey = self.customDataKey {
+            return Geocore.sharedInstance.promisedDELETE(buildPath("/objs", withSubPath: "/customData/\(customDataKey)")!)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id, custom data key")) }
+        }
+    }
+    
 }
 
 public class GeocoreObjectQuery: GeocoreObjectOperation {
@@ -90,8 +111,6 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     private(set) public var unlimitedRecords: Bool
     private(set) public var name: String?
     private(set) public var fromDate: NSDate?
-    private(set) public var customDataValue: String?
-    private(set) public var customDataKey: String?
     private(set) public var page: Int?
     private(set) public var numberPerPage: Int?
     private(set) public var recentlyCreated: Bool?
@@ -108,12 +127,6 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     
     public func updatedAfter(date: NSDate) -> Self {
         self.fromDate = date
-        return self
-    }
-    
-    public func havingCustomData(value: String, forKey: String) -> Self {
-        self.customDataValue = value
-        self.customDataKey = forKey
         return self
     }
     
@@ -520,6 +533,21 @@ public class GeocoreObject: GeocoreIdentifiable {
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Unsaved object doesn't have binaries")) }
         }
+    }
+    
+    public func addCustomData(key: String, value: String) -> Self {
+        if self.customData == nil {
+            self.customData = [String: String?]()
+        }
+        self.customData![key] = value
+        return self
+    }
+    
+    public func deleteCustomData(key: String) -> Promise<GeocoreObject> {
+        return GeocoreObjectOperation()
+            .withId(self.id!)
+            .withCustomDataKey(key)
+            .deleteCustomData()
     }
     
 }

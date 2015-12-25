@@ -11,12 +11,11 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
-public let MMG_STATUSCODE_UNAVAILABLE = -1
-public let MMG_STATUSCODE_UNEXPECTED_RESPONSE = -2
-
-private let MMG_SETKEY_BASE_URL = "GeocoreBaseURL"
-private let MMG_SETKEY_PROJECT_ID = "GeocoreProjectId"
-private let HTTPHEADER_ACCESS_TOKEN_NAME = "Geocore-Access-Token"
+struct GeocoreConstants {
+    private static let BundleKeyBaseURL = "GeocoreBaseURL"
+    private static let BundleKeyProjectID = "GeocoreProjectId"
+    private static let HTTPHeaderAccessTokenName = "Geocore-Access-Token"
+}
 
 /**
     GeocoreKit error code.
@@ -39,6 +38,11 @@ public enum GeocoreError: ErrorType {
     case UnauthorizedAccess
     case InvalidParameter(message: String)
     case NetworkError(error: NSError)
+}
+
+public enum GeocoreServerResponse: Int {
+    case Unavailable = -1
+    case UnexpectedResponse = -2
 }
 
 /**
@@ -187,8 +191,8 @@ public class Geocore: NSObject {
     private var token: String?
     
     private override init() {
-        self.baseURL = NSBundle.mainBundle().objectForInfoDictionaryKey(MMG_SETKEY_BASE_URL) as? String
-        self.projectId = NSBundle.mainBundle().objectForInfoDictionaryKey(MMG_SETKEY_PROJECT_ID) as? String
+        self.baseURL = NSBundle.mainBundle().objectForInfoDictionaryKey(GeocoreConstants.BundleKeyBaseURL) as? String
+        self.projectId = NSBundle.mainBundle().objectForInfoDictionaryKey(GeocoreConstants.BundleKeyProjectID) as? String
     }
     
     /**
@@ -218,7 +222,7 @@ public class Geocore: NSObject {
     private func mutableURLRequest(method: Alamofire.Method, path: String, token: String) -> NSMutableURLRequest {
         let ret = NSMutableURLRequest(URL: NSURL(string: path)!)
         ret.HTTPMethod = method.rawValue
-        ret.setValue(token, forHTTPHeaderField: HTTPHEADER_ACCESS_TOKEN_NAME)
+        ret.setValue(token, forHTTPHeaderField: GeocoreConstants.HTTPHeaderAccessTokenName)
         return ret
     }
     
@@ -421,7 +425,7 @@ public class Geocore: NSObject {
                                     }
                                 } else {
                                     onError(.InvalidServerResponse(
-                                        statusCode: MMG_STATUSCODE_UNEXPECTED_RESPONSE))
+                                        statusCode: GeocoreServerResponse.UnexpectedResponse.rawValue))
                                 }
                             case 403:
                                 onError(.UnauthorizedAccess)
@@ -431,7 +435,7 @@ public class Geocore: NSObject {
                             }
                         } else {
                             onError(.InvalidServerResponse(
-                                statusCode: MMG_STATUSCODE_UNAVAILABLE))
+                                statusCode: GeocoreServerResponse.Unavailable.rawValue))
                         }
                     }
                 }

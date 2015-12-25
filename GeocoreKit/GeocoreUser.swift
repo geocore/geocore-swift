@@ -59,6 +59,14 @@ public enum GeocoreUserPlaceRelationshipType: String {
     case Custom10 = "CUSTOM10"
 }
 
+/*
+#define MMG_SETKEY_USER_FB_ID @"sns.fb.id"
+#define MMG_SETKEY_USER_FB_NAME @"sns.fb.name"
+#define MMG_SETKEY_USER_PUSH_TOKEN @"push.ios.token"
+#define MMG_SETKEY_USER_PUSH_LANG @"push.ios.lang"
+#define MMG_SETKEY_USER_PUSH_ENABLED @"push.enabled"
+*/
+
 public class GeocoreUserOperation: GeocoreTaggableOperation {
     
     private var groupIds: [String]?
@@ -161,6 +169,13 @@ public class GeocoreUserQuery: GeocoreTaggableQuery {
 
 public class GeocoreUser: GeocoreTaggable {
     
+    public static let CustomDataKeyFacebookID = "sns.fb.id"
+    public static let CustomDataKeyFacebookName = "sns.fb.name"
+    public static let CustomDataKeyFacebookEmail = "sns.fb.email"
+    public static let CustomDataKeyiOSPushToken = "push.ios.token"
+    public static let CustomDataKeyiOSPushLanguage = "push.ios.lang"
+    public static let CustomDataKeyiOSPushEnabled = "push.enabled"
+    
     public var password: String?
     public var email: String?
     private(set) public var lastLocationTime: NSDate?
@@ -222,6 +237,31 @@ public class GeocoreUser: GeocoreTaggable {
     
     public class func defaultPassword() -> String {
         return String(defaultId().characters.reverse())
+    }
+    
+    public func isFacebookUser() -> Bool {
+        if let customData = self.customData {
+            return customData[GeocoreUser.CustomDataKeyFacebookID] != nil
+        }
+        return false
+    }
+    
+    public func facebookID() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyFacebookID] {
+                return val
+            }
+        }
+        return nil
+    }
+    
+    public func facebookName() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyFacebookName] {
+                return val
+            }
+        }
+        return nil
     }
     
     public class func defaultUser() -> GeocoreUser {
