@@ -276,7 +276,30 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
     
     public func url() -> Promise<String> {
         return self.binary().then { (binaryDataInfo) -> Promise<String> in
-            return Promise(binaryDataInfo.url!)
+            if let url = binaryDataInfo.url {
+                // TODO: should support https!
+                // for now just replace https with http
+                var finalUrl = url
+                if (url.hasPrefix("https")) {
+                    finalUrl = "http\((url as NSString).substringFromIndex(5))"
+                }
+                //print("url -> \(finalUrl)")
+                return Promise(finalUrl)
+            } else {
+                return Promise { fulfill, reject in reject(GeocoreError.UnexpectedResponse(message: "url is nil")) }
+            }
+        }
+    }
+    
+    public func url<T>(transform: (String?, String) -> T) -> Promise<T> {
+        return Promise { fulfill, reject in
+            self.url()
+                .then { (url) -> Void in
+                    fulfill(transform(self.id, url))
+                }
+                .error { error in
+                    reject(error)
+                }
         }
     }
     
@@ -285,14 +308,7 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
         return Promise { fulfill, reject in
             self.url()
                 .then { (url) -> Void in
-                    // TODO: should support https!
-                    // for now just replace https with http
-                    var finalUrl = url
-                    if (url.hasPrefix("https")) {
-                        finalUrl = "http\((url as NSString).substringFromIndex(5))"
-                    }
-                    //print("url -> \(finalUrl)")
-                    Alamofire.request(.GET, finalUrl).responseImage { response in
+                    Alamofire.request(.GET, url).responseImage { response in
                         if let image = response.result.value {
                             fulfill(image)
                         } else if let error = response.result.error {
@@ -314,6 +330,8 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                 .then { (binaryDataInfo) -> Void in
                     //print("binaryDataInfo -> \(binaryDataInfo)")
                     if let url = binaryDataInfo.url {
+                        // TODO: should support https!
+                        // for now just replace https with http
                         var finalUrl = url
                         if (url.hasPrefix("https")) {
                             finalUrl = "http\((url as NSString).substringFromIndex(5))"

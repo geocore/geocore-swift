@@ -363,15 +363,28 @@ public class Geocore: NSObject {
                     mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
                 }
                 
+                let parameterEncoding = self.parameterEncoding(method)
+                
                 if let someBody = body {
                     // pass parameters as query parameters, body to be processed by Alamofire
                     if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
                         mutableURLRequest.URL = url
                     }
-                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: someBody).0)
+                    
+                    if someBody.isEmpty {
+                        switch parameterEncoding {
+                        case .JSON:
+                            mutableURLRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                            mutableURLRequest.HTTPBody = try! NSJSONSerialization.dataWithJSONObject(someBody, options: NSJSONWritingOptions())
+                        default:
+                            break
+                        }
+                    }
+                    
+                    return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: someBody).0)
                 } else {
                     // set parameters according to standard Alamofire's encode processing
-                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: parameters).0)
+                    return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: parameters).0)
                 }
             }
         } else {
