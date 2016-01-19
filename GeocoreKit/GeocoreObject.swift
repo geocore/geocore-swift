@@ -115,6 +115,7 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
     private(set) public var numberPerPage: Int?
     private(set) public var recentlyCreated: Bool?
     private(set) public var recentlyUpdated: Bool?
+    private(set) public var associatedWithUnendingEvent: Bool?
     
     public override init() {
         self.unlimitedRecords = false
@@ -150,6 +151,11 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
         return self
     }
     
+    public func onlyObjectsAssociatedWithUnendingEvent() -> Self {
+        self.associatedWithUnendingEvent = true
+        return self
+    }
+    
     public override func buildQueryParameters() -> [String: AnyObject] {
         var dict = super.buildQueryParameters()
         if unlimitedRecords {
@@ -171,6 +177,12 @@ public class GeocoreObjectQuery: GeocoreObjectOperation {
         if let recentlyUpdated = self.recentlyUpdated {
             dict["recent_updated"] = recentlyUpdated
         }
+        if let associatedWithUnendingEvent = self.associatedWithUnendingEvent {
+            if (associatedWithUnendingEvent) {
+                dict["bf_ev_end"] = NSDateFormatter.dateFormatterForGeocore().stringFromDate(NSDate())
+            }
+        }
+        
         return dict
     }
     
@@ -298,6 +310,7 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                     fulfill(transform(self.id, url))
                 }
                 .error { error in
+                    print("error getting url for id -> \(self.id)")
                     reject(error)
                 }
         }

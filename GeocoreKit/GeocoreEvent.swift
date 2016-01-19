@@ -13,6 +13,15 @@ import PromiseKit
 
 public class GeocoreEventQuery: GeocoreObjectQuery {
     
+    private(set) public var centerLatitude: Double?
+    private(set) public var centerLongitude: Double?
+    
+    public func withCenter(latitude latitude: Double, longitude: Double) -> Self {
+        self.centerLatitude = latitude
+        self.centerLongitude = longitude
+        return self
+    }
+    
     public func get() -> Promise<GeocoreEvent> {
         return self.get("/events")
     }
@@ -34,6 +43,17 @@ public class GeocoreEventQuery: GeocoreObjectQuery {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func nearest() -> Promise<[GeocoreEvent]> {
+        if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
+            var dict = super.buildQueryParameters()
+            dict["lat"] = centerLatitude
+            dict["lon"] = centerLongitude
+            return Geocore.sharedInstance.promisedGET("/events/search/nearest", parameters: dict)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
         }
     }
     

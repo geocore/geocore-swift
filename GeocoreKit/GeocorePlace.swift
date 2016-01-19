@@ -11,6 +11,38 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
+public class GeocorePlacesSmallestBound: GeocoreInitializableFromJSON {
+    
+    private(set) public var minLatitude: Double?
+    private(set) public var minLongitude: Double?
+    private(set) public var maxLatitude: Double?
+    private(set) public var maxLongitude: Double?
+    
+    public required init(_ json: JSON) {
+        self.minLatitude = json["min_lat"].double
+        self.minLongitude = json["min_lon"].double
+        self.maxLatitude = json["max_lat"].double
+        self.maxLongitude = json["max_lon"].double
+    }
+    
+    public func center() -> (Double, Double)? {
+        if let maxlat = self.maxLatitude, minlat = self.minLatitude, maxlon = self.maxLongitude, minlon = self.minLongitude {
+            return ((maxlat + minlat)/2, (maxlon + minlon)/2)
+        } else {
+            return nil
+        }
+    }
+    
+    public func span() -> (Double, Double)? {
+        if let maxlat = self.maxLatitude, minlat = self.minLatitude, maxlon = self.maxLongitude, minlon = self.minLongitude {
+            return (abs(maxlat - minlat), abs(maxlon - minlon))
+        } else {
+            return nil
+        }
+    }
+
+}
+
 public class GeocorePlaceOperation: GeocoreTaggableOperation {
     
 }
@@ -67,6 +99,32 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["lon"] = centerLongitude
             if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
             return Geocore.sharedInstance.promisedGET("/places/search/nearest", parameters: dict)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
+        }
+    }
+    
+    public func smallestBounds() -> Promise<GeocorePlacesSmallestBound> {
+        if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
+            var dict = super.buildQueryParameters()
+            dict["lat"] = centerLatitude
+            dict["lon"] = centerLongitude
+            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
+            return Geocore.sharedInstance.promisedGET("/places/search/smallestbounds", parameters: dict)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
+        }
+    }
+    
+    public func withinRectangle() -> Promise<[GeocorePlace]> {
+        if let minlat = self.minimumLatitude, maxlat = self.maximumLatitude, minlon = self.self.minimumLongitude, maxlon = self.maximumLongitude  {
+            var dict = super.buildQueryParameters()
+            dict["min_lat"] = minlat
+            dict["max_lat"] = maxlat
+            dict["min_lon"] = minlon
+            dict["max_lon"] = maxlon
+            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
+            return Geocore.sharedInstance.promisedGET("/places/search/within/rect", parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
         }
