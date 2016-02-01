@@ -165,6 +165,14 @@ public class GeocoreUserQuery: GeocoreTaggableQuery {
         }
     }
     
+    public func itemRelationships() -> Promise<[GeocoreUserItem]> {
+        if let userId = self.id {
+            return GeocoreUserItemQuery().withObject1Id(userId).all()
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
 }
 
 public class GeocoreUser: GeocoreTaggable {
@@ -295,6 +303,10 @@ public class GeocoreUser: GeocoreTaggable {
     
     public func placeRelationships(place: GeocorePlace) -> Promise<[GeocoreUserPlace]> {
         return GeocoreUserQuery().withId(self.id!).placeRelationships(place)
+    }
+    
+    public func itemRelationships() -> Promise<[GeocoreUserItem]> {
+        return GeocoreUserQuery().withId(self.id!).itemRelationships()
     }
     
     public func tagOperation() -> GeocoreUserTagOperation {
@@ -601,6 +613,93 @@ public class GeocoreUserPlace: GeocoreRelationship {
         if let place = self.place { pk["place"] = place.toDictionary() }
         if let relationshipType = self.relationshipType { pk["relationship"] = relationshipType.rawValue }
         dict["pk"] = pk
+        return dict
+    }
+    
+}
+
+public class GeocoreUserItemOperation: GeocoreRelationshipOperation {
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withItem(item: GeocoreItem) -> Self {
+        super.withObject2Id(item.id!)
+        return self
+    }
+    
+    public func adjustAmount(amount: Int) -> Promise<GeocoreUserItem> {
+        if let id1 = self.id1, id2 = self.id2 {
+            var sign = "-"
+            if amount > 0 {
+                sign = "+"
+            }
+            return Geocore.sharedInstance.promisedPOST("/users/\(id1)/items/\(id2)/amount/\(sign)\(abs(amount))")
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids")) }
+        }
+    }
+    
+}
+
+public class GeocoreUserItemQuery: GeocoreRelationshipQuery {
+    
+    public func withUser(user: GeocoreUser) -> Self {
+        super.withObject1Id(user.id!)
+        return self
+    }
+    
+    public func withItem(item: GeocoreItem) -> Self {
+        super.withObject2Id(item.id!)
+        return self
+    }
+    
+    public func all() -> Promise<[GeocoreUserItem]> {
+        if self.id1 != nil {
+            return Geocore.sharedInstance.promisedGET(super.buildPath("/users", withSubPath: "/items"), parameters: ["output_format": "json.relationship"])
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+}
+
+public class GeocoreUserItem: GeocoreRelationship {
+    
+    public var user: GeocoreUser?
+    public var item: GeocoreItem?
+    public var createTime: NSDate?
+    public var amount: Int64?
+    public var orderNumber: Int?
+    
+    public required init(_ json: JSON) {
+        super.init(json)
+        if let pk = json["pk"].dictionary {
+            if let userDict = pk["user"] {
+                self.user = GeocoreUser(userDict)
+            }
+            if let itemDict = pk["item"] {
+                self.item = GeocoreItem(itemDict)
+            }
+            if let createTimeString = pk["createTime"] {
+                self.createTime = NSDate.fromGeocoreFormattedString(createTimeString.string)
+            }
+        }
+        self.amount = json["amount"].int64
+        self.orderNumber = json["orderNumber"].int
+    }
+    
+    public override func toDictionary() -> [String: AnyObject] {
+        var dict = super.toDictionary()
+        var pk = [String: AnyObject]()
+        if let user = self.user { pk["user"] = user.toDictionary() }
+        if let item = self.item { pk["item"] = item.toDictionary() }
+        if let createTime = self.createTime { pk["createTime"] = createTime }
+        dict["pk"] = pk
+        if let amount = self.amount { dict["amount"] = NSNumber(longLong: amount) }
+        if let orderNumber = self.orderNumber { dict["orderNumber"] = orderNumber }
         return dict
     }
     
