@@ -17,7 +17,7 @@ public enum GeocoreItemType: String {
     case Unknown = ""
 }
 
-public class GeocoreItemQuery: GeocoreObjectQuery {
+public class GeocoreItemQuery: GeocoreTaggableQuery {
     
     public func get() -> Promise<GeocoreItem> {
         return self.get("/items")

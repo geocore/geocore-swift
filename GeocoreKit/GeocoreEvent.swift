@@ -11,7 +11,7 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
-public class GeocoreEventQuery: GeocoreObjectQuery {
+public class GeocoreEventQuery: GeocoreTaggableQuery {
     
     private(set) public var centerLatitude: Double?
     private(set) public var centerLongitude: Double?
