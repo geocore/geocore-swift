@@ -59,6 +59,7 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     private(set) public var maximumLongitude: Double?
     
     private(set) public var checkinable: Bool?
+    private(set) public var validItems: Bool?
     
     public func withCenter(latitude latitude: Double, longitude: Double) -> Self {
         self.centerLatitude = latitude
@@ -81,6 +82,11 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     public func onlyCheckinable() -> Self {
         self.checkinable = true
+        return self
+    }
+    
+    public func onlyValidItems() -> Self {
+        self.validItems = true
         return self
     }
     
@@ -116,7 +122,28 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
         }
     }
     
-    public func withinRectangle() -> Promise<[GeocorePlace]> {
+    private func circleQuery(withPath: String) -> Promise<[GeocorePlace]> {
+        if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude, radius = self.radius {
+            var dict = super.buildQueryParameters()
+            dict["lat"] = centerLatitude
+            dict["lon"] = centerLongitude
+            dict["radius"] = radius
+            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
+            return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon, radius")) }
+        }
+    }
+    
+    public func withinCircle() -> Promise<[GeocorePlace]> {
+        return self.circleQuery("/places/search/within/circle")
+    }
+    
+    public func intersectsCircle() -> Promise<[GeocorePlace]> {
+        return self.circleQuery("/places/search/intersects/circle")
+    }
+    
+    private func rectangleQuery(withPath: String) -> Promise<[GeocorePlace]> {
         if let minlat = self.minimumLatitude, maxlat = self.maximumLatitude, minlon = self.self.minimumLongitude, maxlon = self.maximumLongitude  {
             var dict = super.buildQueryParameters()
             dict["min_lat"] = minlat
@@ -124,10 +151,18 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["min_lon"] = minlon
             dict["max_lon"] = maxlon
             if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
-            return Geocore.sharedInstance.promisedGET("/places/search/within/rect", parameters: dict)
+            return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting min/max lat-lon")) }
         }
+    }
+    
+    public func withinRectangle() -> Promise<[GeocorePlace]> {
+        return self.rectangleQuery("/places/search/within/rect")
+    }
+    
+    public func intersectsRectangle() -> Promise<[GeocorePlace]> {
+        return self.rectangleQuery("/places/search/intersects/rect")
     }
     
     public func events() -> Promise<[GeocoreEvent]> {
@@ -141,6 +176,16 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     public func eventRelationships() -> Promise<[GeocorePlaceEvent]> {
         if let path = buildPath("/places", withSubPath: "/events/relationships") {
             return Geocore.sharedInstance.promisedGET(path)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
+    public func items() -> Promise<[GeocoreItem]> {
+        if let path = buildPath("/places", withSubPath: "/items") {
+            var dict = super.buildQueryParameters()
+            if let validItems = self.validItems { if validItems { dict["valid_only"] = "true" } }
+            return Geocore.sharedInstance.promisedGET(path, parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
         }
