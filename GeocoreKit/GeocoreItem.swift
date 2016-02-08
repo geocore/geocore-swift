@@ -27,6 +27,14 @@ public class GeocoreItemQuery: GeocoreTaggableQuery {
         return self.all("/items")
     }
     
+    public func events() -> Promise<[GeocoreEvent]> {
+        if let path = buildPath("/items", withSubPath: "/events") {
+            return Geocore.sharedInstance.promisedGET(path)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
 }
 
 public class GeocoreItem: GeocoreTaggable {
