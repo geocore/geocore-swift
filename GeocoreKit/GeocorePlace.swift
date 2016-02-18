@@ -60,6 +60,7 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     private(set) public var checkinable: Bool?
     private(set) public var validItems: Bool?
+    private var eventDetails = false
     
     public func withCenter(latitude latitude: Double, longitude: Double) -> Self {
         self.centerLatitude = latitude
@@ -90,6 +91,11 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
         return self
     }
     
+    public func withEventDetails() -> Self {
+        self.eventDetails = true
+        return self
+    }
+    
     public func get() -> Promise<GeocorePlace> {
         return self.get("/places")
     }
@@ -98,12 +104,18 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
         return self.all("/places")
     }
     
+    public override func buildQueryParameters() -> [String: AnyObject] {
+        var dict = super.buildQueryParameters()
+        if eventDetails { dict["event_detail"] = "true" }
+        if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
+        return dict
+    }
+    
     public func nearest() -> Promise<[GeocorePlace]> {
         if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
-            var dict = super.buildQueryParameters()
+            var dict = buildQueryParameters()
             dict["lat"] = centerLatitude
             dict["lon"] = centerLongitude
-            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
             return Geocore.sharedInstance.promisedGET("/places/search/nearest", parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
@@ -112,10 +124,9 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     public func smallestBounds() -> Promise<GeocorePlacesSmallestBound> {
         if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
-            var dict = super.buildQueryParameters()
+            var dict = buildQueryParameters()
             dict["lat"] = centerLatitude
             dict["lon"] = centerLongitude
-            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
             return Geocore.sharedInstance.promisedGET("/places/search/smallestbounds", parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
@@ -124,11 +135,10 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     private func circleQuery(withPath: String) -> Promise<[GeocorePlace]> {
         if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude, radius = self.radius {
-            var dict = super.buildQueryParameters()
+            var dict = buildQueryParameters()
             dict["lat"] = centerLatitude
             dict["lon"] = centerLongitude
             dict["radius"] = radius
-            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
             return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon, radius")) }
@@ -145,12 +155,11 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     private func rectangleQuery(withPath: String) -> Promise<[GeocorePlace]> {
         if let minlat = self.minimumLatitude, maxlat = self.maximumLatitude, minlon = self.self.minimumLongitude, maxlon = self.maximumLongitude  {
-            var dict = super.buildQueryParameters()
+            var dict = buildQueryParameters()
             dict["min_lat"] = minlat
             dict["max_lat"] = maxlat
             dict["min_lon"] = minlon
             dict["max_lon"] = maxlon
-            if let checkinable = self.checkinable { if checkinable { dict["checkinable"] = "true" } }
             return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
         } else {
             return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting min/max lat-lon")) }
@@ -183,7 +192,7 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
     
     public func items() -> Promise<[GeocoreItem]> {
         if let path = buildPath("/places", withSubPath: "/items") {
-            var dict = super.buildQueryParameters()
+            var dict = buildQueryParameters()
             if let validItems = self.validItems { if validItems { dict["valid_only"] = "true" } }
             return Geocore.sharedInstance.promisedGET(path, parameters: dict)
         } else {
@@ -200,6 +209,8 @@ public class GeocorePlace: GeocoreTaggable {
     public var point: GeocorePoint?
     public var distanceLimit: Float?
     
+    public var prefetchedEvents: [GeocoreEvent]?
+    
     // TODO: clumsy but will do for now
     // probably should immutabilize all the things
     public var operation: GeocorePlaceOperation?
@@ -213,6 +224,9 @@ public class GeocorePlace: GeocoreTaggable {
         self.shortDescription = json["shortDescription"].string
         self.point = GeocorePoint(json["point"])
         self.distanceLimit = json["distanceLimit"].float
+        if let eventsJSON = json["events"].array {
+            self.prefetchedEvents = eventsJSON.map({ GeocoreEvent($0) })
+        }
         super.init(json)
     }
     
@@ -238,7 +252,16 @@ public class GeocorePlace: GeocoreTaggable {
     }
     
     public func events() -> Promise<[GeocoreEvent]> {
-        return query().events()
+        if let prefetchedEvents = self.prefetchedEvents {
+            return Promise { fulfill, reject in fulfill(prefetchedEvents) }
+        } else {
+            return query()
+                .events()
+                .then { events -> [GeocoreEvent] in
+                    self.prefetchedEvents = events
+                    return events
+                }
+        }
     }
     
     public func tag(tagIdsOrNames: [String]) -> Self {

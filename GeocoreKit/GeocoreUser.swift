@@ -59,14 +59,6 @@ public enum GeocoreUserPlaceRelationshipType: String {
     case Custom10 = "CUSTOM10"
 }
 
-/*
-#define MMG_SETKEY_USER_FB_ID @"sns.fb.id"
-#define MMG_SETKEY_USER_FB_NAME @"sns.fb.name"
-#define MMG_SETKEY_USER_PUSH_TOKEN @"push.ios.token"
-#define MMG_SETKEY_USER_PUSH_LANG @"push.ios.lang"
-#define MMG_SETKEY_USER_PUSH_ENABLED @"push.enabled"
-*/
-
 public class GeocoreUserOperation: GeocoreTaggableOperation {
     
     private var groupIds: [String]?

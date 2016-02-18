@@ -19,6 +19,19 @@ public enum GeocoreItemType: String {
 
 public class GeocoreItemQuery: GeocoreTaggableQuery {
     
+    private(set) public var validItems: Bool?
+    
+    public func onlyValidItems() -> Self {
+        self.validItems = true
+        return self
+    }
+    
+    public override func buildQueryParameters() -> [String: AnyObject] {
+        var dict = super.buildQueryParameters()
+        if let validItems = self.validItems { if validItems { dict["valid_only"] = "true" } }
+        return dict
+    }
+    
     public func get() -> Promise<GeocoreItem> {
         return self.get("/items")
     }

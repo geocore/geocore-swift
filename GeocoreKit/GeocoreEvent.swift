@@ -97,5 +97,13 @@ public class GeocoreEvent: GeocoreTaggable {
         return query().places()
     }
     
+    public func currentlyOpen() -> Bool {
+        if let timeStart = self.timeStart, timeEnd = self.timeEnd {
+            let now = NSDate()
+            return timeStart.timeIntervalSince1970 <= now.timeIntervalSince1970 && now.timeIntervalSince1970 <= timeEnd.timeIntervalSince1970
+        }
+        return false
+    }
+    
 }
 
