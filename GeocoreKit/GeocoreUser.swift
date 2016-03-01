@@ -72,18 +72,16 @@ public class GeocoreUserOperation: GeocoreTaggableOperation {
         if let groupIds = self.groupIds {
             dict["group_ids"] = groupIds.joinWithSeparator(",")
         }
+        dict["project_id"] = Geocore.sharedInstance.projectId
         return dict
     }
     
     public func register(user: GeocoreUser, callback: (GeocoreResult<GeocoreUser>) -> Void) {
-        // TODO: a bit clumsy, but will do for now
-        var params = buildQueryParameters()
-        params["project_id"] = Geocore.sharedInstance.projectId
+        let params = buildQueryParameters()
         Geocore.sharedInstance.POST("/register", parameters: params, body: user.toDictionary(), callback: callback)
     }
     
     public func register(user: GeocoreUser) -> Promise<GeocoreUser> {
-        // TODO: a bit clumsy, but will do for now
         let params = buildQueryParameters()
         if params.count > 0 {
             return Geocore.sharedInstance.promisedPOST(buildPath("/register"), parameters: params, body: user.toDictionary())
@@ -114,8 +112,22 @@ public class GeocoreUserTagOperation: GeocoreTaggableOperation {
 
 public class GeocoreUserQuery: GeocoreTaggableQuery {
     
+    private(set) public var alternateIdIndex: Int?
+    
+    public func forAlternateIdIndex(alternateIdIndex: Int) -> Self {
+        self.alternateIdIndex = alternateIdIndex
+        return self
+    }
+    
+    public override func buildQueryParameters() -> [String: AnyObject] {
+        var dict = super.buildQueryParameters()
+        if let alternateIdIndex = self.alternateIdIndex {
+            dict["alt"] = alternateIdIndex
+        }
+        return dict
+    }
+    
     public func get() -> Promise<GeocoreUser> {
-        
         return self.get("/users")
     }
     
@@ -172,9 +184,20 @@ public class GeocoreUser: GeocoreTaggable {
     public static let CustomDataKeyFacebookID = "sns.fb.id"
     public static let CustomDataKeyFacebookName = "sns.fb.name"
     public static let CustomDataKeyFacebookEmail = "sns.fb.email"
+    public static let CustomDataKeyTwitterID = "sns.tw.id"
+    public static let CustomDataKeyTwitterName = "sns.tw.name"
+    public static let CustomDataKeyGooglePlusID = "sns.gp.id"
+    public static let CustomDataKeyGooglePlusName = "sns.gp.name"
+    
     public static let CustomDataKeyiOSPushToken = "push.ios.token"
     public static let CustomDataKeyiOSPushLanguage = "push.ios.lang"
     public static let CustomDataKeyiOSPushEnabled = "push.enabled"
+    
+    public var alternateId1: String?
+    public var alternateId2: String?
+    public var alternateId3: String?
+    public var alternateId4: String?
+    public var alternateId5: String?
     
     public var password: String?
     public var email: String?
@@ -186,7 +209,14 @@ public class GeocoreUser: GeocoreTaggable {
     }
     
     public required init(_ json: JSON) {
+        
         self.email = json["email"].string
+        self.alternateId1 = json["alternateId1"].string
+        self.alternateId2 = json["alternateId2"].string
+        self.alternateId3 = json["alternateId3"].string
+        self.alternateId4 = json["alternateId4"].string
+        self.alternateId5 = json["alternateId5"].string
+        
         self.lastLocationTime = NSDate.fromGeocoreFormattedString(json["lastLocationTime"].string)
         self.lastLocation = GeocorePoint(json["lastLocation"])
         super.init(json)
@@ -196,10 +226,15 @@ public class GeocoreUser: GeocoreTaggable {
         var dict = super.toDictionary()
         if let password = self.password { dict["password"] = password }
         if let email = self.email { dict["email"] = email }
+        if let alternateId1 = self.alternateId1 { dict["alternateId1"] = alternateId1 }
+        if let alternateId2 = self.alternateId2 { dict["alternateId2"] = alternateId2 }
+        if let alternateId3 = self.alternateId3 { dict["alternateId3"] = alternateId3 }
+        if let alternateId4 = self.alternateId4 { dict["alternateId4"] = alternateId4 }
+        if let alternateId5 = self.alternateId5 { dict["alternateId5"] = alternateId5 }
         return dict
     }
     
-    private class func userIdWithSuffix(suffix: String) -> String {
+    public class func userIdWithSuffix(suffix: String) -> String {
         if let projectId = Geocore.sharedInstance.projectId {
             if projectId.hasPrefix("PRO") {
                 // user ID pattern: USE-[project_suffix]-[user_id_suffix]
@@ -239,6 +274,11 @@ public class GeocoreUser: GeocoreTaggable {
         return String(defaultId().characters.reverse())
     }
     
+    public func setFacebookUser(id: String, name: String) {
+        self.addCustomData(GeocoreUser.CustomDataKeyFacebookID, value: id)
+        self.addCustomData(GeocoreUser.CustomDataKeyFacebookName, value: name)
+    }
+    
     public func isFacebookUser() -> Bool {
         if let customData = self.customData {
             return customData[GeocoreUser.CustomDataKeyFacebookID] != nil
@@ -258,6 +298,66 @@ public class GeocoreUser: GeocoreTaggable {
     public func facebookName() -> String? {
         if let customData = self.customData {
             if let val = customData[GeocoreUser.CustomDataKeyFacebookName] {
+                return val
+            }
+        }
+        return nil
+    }
+    
+    public func setTwitterUser(id: String, name: String) {
+        self.addCustomData(GeocoreUser.CustomDataKeyTwitterID, value: id)
+        self.addCustomData(GeocoreUser.CustomDataKeyTwitterName, value: name)
+    }
+    
+    public func isTwitterUser() -> Bool {
+        if let customData = self.customData {
+            return customData[GeocoreUser.CustomDataKeyTwitterID] != nil
+        }
+        return false
+    }
+    
+    public func twitterID() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyTwitterID] {
+                return val
+            }
+        }
+        return nil
+    }
+    
+    public func twitterName() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyTwitterName] {
+                return val
+            }
+        }
+        return nil
+    }
+    
+    public func setGooglePlusUser(id: String, name: String) {
+        self.addCustomData(GeocoreUser.CustomDataKeyGooglePlusID, value: id)
+        self.addCustomData(GeocoreUser.CustomDataKeyGooglePlusName, value: name)
+    }
+    
+    public func isGooglePlusUser() -> Bool {
+        if let customData = self.customData {
+            return customData[GeocoreUser.CustomDataKeyGooglePlusID] != nil
+        }
+        return false
+    }
+    
+    public func googlePlusID() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyGooglePlusID] {
+                return val
+            }
+        }
+        return nil
+    }
+    
+    public func googlePlusName() -> String? {
+        if let customData = self.customData {
+            if let val = customData[GeocoreUser.CustomDataKeyGooglePlusName] {
                 return val
             }
         }

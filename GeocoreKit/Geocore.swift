@@ -354,37 +354,46 @@ public class Geocore: NSObject {
             // if token is available (user already logged-in), use NSMutableURLRequest to customize HTTP header
             return { (path: String) -> Request in
                 
-                // NSMutableURLRequest with customized HTTP header
-                var mutableURLRequest: NSMutableURLRequest
-                
                 if let multipartInfo = self.multipartInfo(body) {
-                    mutableURLRequest = self.multipartURLRequest(method, path: path, token: token, fieldName: multipartInfo.fieldName, fileName: multipartInfo.fileName, mimeType: multipartInfo.mimeType, fileContents: multipartInfo.fileContents)
+                    return Alamofire.request(
+                        Alamofire.ParameterEncoding.URL.encode(
+                            self.multipartURLRequest(method,
+                                path: path,
+                                token: token,
+                                fieldName: multipartInfo.fieldName,
+                                fileName: multipartInfo.fileName,
+                                mimeType: multipartInfo.mimeType,
+                                fileContents: multipartInfo.fileContents),
+                            parameters: parameters).0)
                 } else {
-                    mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
-                }
-                
-                let parameterEncoding = self.parameterEncoding(method)
-                
-                if let someBody = body {
-                    // pass parameters as query parameters, body to be processed by Alamofire
-                    if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
-                        mutableURLRequest.URL = url
-                    }
                     
-                    if someBody.isEmpty {
-                        switch parameterEncoding {
-                        case .JSON:
-                            mutableURLRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                            mutableURLRequest.HTTPBody = try! NSJSONSerialization.dataWithJSONObject(someBody, options: NSJSONWritingOptions())
-                        default:
-                            break
+                    // NSMutableURLRequest with customized HTTP header
+                    // NOTE: this logic assuems that after logged-in ALL POSTs will POST JSON as body
+                    // see-> self.parameterEncoding(method)
+                    
+                    let mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
+                    let parameterEncoding = self.parameterEncoding(method)
+                    if let someBody = body {
+                        // pass parameters as query parameters, body to be processed by Alamofire
+                        if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
+                            mutableURLRequest.URL = url
                         }
+                        
+                        if someBody.isEmpty {
+                            switch parameterEncoding {
+                            case .JSON:
+                                mutableURLRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                                mutableURLRequest.HTTPBody = try! NSJSONSerialization.dataWithJSONObject(someBody, options: NSJSONWritingOptions())
+                            default:
+                                break
+                            }
+                        }
+                        
+                        return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: someBody).0)
+                    } else {
+                        // set parameters according to standard Alamofire's encode processing
+                        return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: parameters).0)
                     }
-                    
-                    return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: someBody).0)
-                } else {
-                    // set parameters according to standard Alamofire's encode processing
-                    return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: parameters).0)
                 }
             }
         } else {
@@ -595,26 +604,34 @@ public class Geocore: NSObject {
     - parameter password: Password for authorizing user.
     - parameter callback: Closure to be called when the token string or an error is returned.
     */
-    public func login(userId: String, password: String, callback:(GeocoreResult<String>) -> Void) {
-        self.POST("/auth", parameters: ["id": userId, "password": password, "project_id": self.projectId!]) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
+    public func login(userId: String, password: String, alternateIdIndex: Int = 0, callback:(GeocoreResult<String>) -> Void) {
+        var params = ["id": userId, "password": password, "project_id": self.projectId!]
+        if alternateIdIndex > 0 {
+            params["alt"] = String(alternateIdIndex)
+        }
+        
+        // make sure we're logged out, otherwise the logic in requestBuilder will break!
+        self.logout()
+        
+        self.POST("/auth", parameters: params) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
             switch result {
-                case .Success(let value):
-                    self.token = value.json["token"].string
-                    if let token = self.token {
-                        self.userId = userId
-                        callback(GeocoreResult(token))
-                    } else {
-                        callback(.Failure(GeocoreError.InvalidState))
-                    }
-                case .Failure(let error):
-                    callback(.Failure(error))
+            case .Success(let value):
+                self.token = value.json["token"].string
+                if let token = self.token {
+                    self.userId = userId
+                    callback(GeocoreResult(token))
+                } else {
+                    callback(.Failure(GeocoreError.InvalidState))
+                }
+            case .Failure(let error):
+                callback(.Failure(error))
             }
         }
     }
     
     public func loginWithDefaultUser(callback:(GeocoreResult<String>) -> Void) {
         // login using default id & password
-        self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
+        self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword(), alternateIdIndex: 0) { result in
             switch result {
             case .Success(_):
                 callback(result)
@@ -628,7 +645,7 @@ public class Geocore: NSObject {
                             switch result {
                             case .Success(_):
                                 // successfully registered, now login again
-                                self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword()) { result in
+                                self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword(), alternateIdIndex: 0) { result in
                                     callback(result)
                                 }
                             case .Failure(let error):
@@ -657,9 +674,9 @@ public class Geocore: NSObject {
     
         :returns: Promise for Geocore Access Token (as String).
      */
-    public func login(userId: String, password: String) -> Promise<String> {
+    public func login(userId: String, password: String, alternateIdIndex: Int = 0) -> Promise<String> {
         return Promise { (fulfill, reject) in
-            self.login(userId, password: password) { result in
+            self.login(userId, password: password, alternateIdIndex: alternateIdIndex) { result in
                 result.propagateTo(fulfill, reject: reject)
             }
         }
@@ -671,6 +688,11 @@ public class Geocore: NSObject {
                 result.propagateTo(fulfill, reject: reject)
             }
         }
+    }
+    
+    public func logout() {
+        self.token = nil
+        self.userId = nil
     }
     
 }

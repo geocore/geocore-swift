@@ -433,6 +433,152 @@ public class GeocoreRelationshipOperation {
             return forService
         }
     }
+
+}
+
+public class GeocoreRelationshipBinaryOperation: GeocoreRelationshipOperation {
+    
+    // TODO: should be refactored so the code can be shared with GeocoreObjectOperation
+    private(set) public var key: String?
+    private(set) public var mimeType: String = "application/octet-stream"
+    private(set) public var data: NSData?
+    
+    public func withKey(key: String) -> Self {
+        self.key = key
+        return self
+    }
+    
+    public func withMimeType(mimeType: String) -> Self {
+        self.mimeType = mimeType
+        return self
+    }
+    
+    public func withData(data: NSData) -> Self {
+        self.data = data
+        return self
+    }
+    
+    public func upload() -> Promise<GeocoreBinaryDataInfo> {
+        if let id1 = self.id1, let id2 = self.id2, let key = self.key, let data = self.data {
+            return Geocore.sharedInstance.promisedUploadPOST(
+                "/objs/relationship/\(id1)/\(id2)/bins/\(key)",
+                fieldName: "data",
+                fileName: "data",
+                mimeType: self.mimeType,
+                fileContents: data)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids, key and data")) }
+        }
+    }
+    
+    public func binaries() -> Promise<[String]> {
+        if let id1 = self.id1, let id2 = self.id2 {
+            let path = "/objs/relationship/\(id1)/\(id2)/bins"
+            let generics: Promise<[GeocoreGenericResult]> = Geocore.sharedInstance.promisedGET(path, parameters: nil)
+            return generics.then { (generics) -> [String] in
+                var bins = [String]()
+                for generic in generics {
+                    bins.append(generic.json.string!)
+                }
+                return bins
+            }
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids")) }
+        }
+    }
+    
+    public func binary() -> Promise<GeocoreBinaryDataInfo> {
+        if let id1 = self.id1, let id2 = self.id2, let key = self.key {
+            let path = "/objs/relationship/\(id1)/\(id2)/bins/\(key)"
+            return Geocore.sharedInstance.promisedGET(path, parameters: nil)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting ids and key")) }
+        }
+    }
+    
+    public func url() -> Promise<String> {
+        return self.binary().then { (binaryDataInfo) -> Promise<String> in
+            if let url = binaryDataInfo.url {
+                // TODO: should support https!
+                // for now just replace https with http
+                var finalUrl = url
+                if (url.hasPrefix("https")) {
+                    finalUrl = "http\((url as NSString).substringFromIndex(5))"
+                }
+                //print("url -> \(finalUrl)")
+                return Promise(finalUrl)
+            } else {
+                return Promise { fulfill, reject in reject(GeocoreError.UnexpectedResponse(message: "url is nil")) }
+            }
+        }
+    }
+    
+    public func url<T>(transform: (String?, String?, String) -> T) -> Promise<T> {
+        return Promise { fulfill, reject in
+            self.url()
+                .then { (url) -> Void in
+                    fulfill(transform(self.id1, self.id2, url))
+                }
+                .error { error in
+                    print("error getting url for id -> \(self.id1), \(self.id2)")
+                    reject(error)
+            }
+        }
+    }
+    
+#if os(iOS)
+    public func image() -> Promise<UIImage> {
+        return Promise { fulfill, reject in
+            self.url()
+                .then { (url) -> Void in
+                    Alamofire.request(.GET, url).responseImage { response in
+                        if let image = response.result.value {
+                            fulfill(image)
+                        } else if let error = response.result.error {
+                            reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: \(error)"))
+                        } else {
+                            reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: unknown error"))
+                        }
+                    }
+                }
+                .error { error in
+                    reject(error)
+                }
+        }
+    }
+    
+    public func image<T>(transform: (String?, String?, GeocoreBinaryDataInfo, UIImage) -> T) -> Promise<T> {
+        return Promise { fulfill, reject in
+            self.binary()
+                .then { (binaryDataInfo) -> Void in
+                    //print("binaryDataInfo -> \(binaryDataInfo)")
+                    if let url = binaryDataInfo.url {
+                        // TODO: should support https!
+                        // for now just replace https with http
+                        var finalUrl = url
+                        if (url.hasPrefix("https")) {
+                            finalUrl = "http\((url as NSString).substringFromIndex(5))"
+                        }
+                        //print("url -> \(finalUrl)")
+                        Alamofire.request(.GET, finalUrl).responseImage { response in
+                            if let image = response.result.value {
+                                fulfill(transform(self.id1, self.id2, binaryDataInfo, image))
+                            } else if let error = response.result.error {
+                                reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: \(error)"))
+                            } else {
+                                reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: unknown error"))
+                            }
+                        }
+                    } else {
+                        reject(GeocoreError.UnexpectedResponse(message: "Error downloading image: URL unavailable"))
+                    }
+                }
+                .error { error in
+                    reject(error)
+                }
+        }
+    }
+#endif
     
 }
 
