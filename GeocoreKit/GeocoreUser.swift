@@ -364,6 +364,17 @@ public class GeocoreUser: GeocoreTaggable {
         return nil
     }
     
+    public func registerForPushNotications(token: NSData, preferredLanguage: String? = nil, enabled: Bool = true) -> Promise<GeocoreUser> {
+        let tokenUpdated = self.updateCustomData(GeocoreUser.CustomDataKeyiOSPushToken, value: token.description)
+        let langUpdated = self.updateCustomData(GeocoreUser.CustomDataKeyiOSPushLanguage, value: preferredLanguage)
+        let enabledUpdated = self.updateCustomData(GeocoreUser.CustomDataKeyiOSPushEnabled, value: enabled.description)
+        if (tokenUpdated || langUpdated || enabledUpdated) {
+            return self.save()
+        } else {
+            return Promise { fulfill, reject in fulfill(self) }
+        }
+    }
+    
     public class func defaultUser() -> GeocoreUser {
         let user = GeocoreUser()
         user.id = GeocoreUser.defaultId()

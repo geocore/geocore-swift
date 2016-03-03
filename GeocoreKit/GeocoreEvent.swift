@@ -1,6 +1,6 @@
 //
 //  GeocoreEvent.swift
-//  Asutomo
+//  GeocoreKit
 //
 //  Created by Purbo Mohamad on 11/30/15.
 //  Copyright © 2015 MapMotion. All rights reserved.

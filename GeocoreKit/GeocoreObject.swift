@@ -55,22 +55,22 @@ public class GeocoreObjectOperation {
     
     public func buildPath(forService: String) -> String {
         if let id = self.id {
-            return "\(forService)/\(id)";
+            return "\(forService)/\(id)"
         } else {
-            return forService;
+            return forService
         }
     }
     
     public func buildPath(forService: String, withSubPath: String) -> String? {
         if let id = self.id {
-            return "\(forService)/\(id)\(withSubPath)";
+            return "\(forService)/\(id)\(withSubPath)"
         } else {
-            return nil;
+            return nil
         }
     }
     
     public func buildQueryParameters() -> [String: AnyObject] {
-        return [String: AnyObject]();
+        return [String: AnyObject]()
     }
     
     public func save<TI: GeocoreIdentifiable, TO: GeocoreInitializableFromJSON>(obj: TI, forService: String) -> Promise<TO> {
@@ -718,6 +718,21 @@ public class GeocoreObject: GeocoreIdentifiable {
         }
         self.customData![key] = value
         return self
+    }
+    
+    public func updateCustomData(key: String, value: String?) -> Bool {
+        var updated = false
+        if let currentValue = self.customData?[key], newValue = value {
+            if currentValue != newValue {
+                self.customData![key] = newValue
+                updated = true
+            }
+        } else if self.customData == nil && value != nil {
+            self.customData = [String: String?]()
+            self.customData![key] = value
+            updated = true
+        }
+        return updated
     }
     
     public func deleteCustomData(key: String) -> Promise<GeocoreObject> {
