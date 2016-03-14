@@ -316,6 +316,19 @@ public class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
         }
     }
     
+    public func url<T>(transform: (String?, String?, String) -> T) -> Promise<T> {
+        return Promise { fulfill, reject in
+            self.url()
+                .then { (url) -> Void in
+                    fulfill(transform(self.id, self.key, url))
+                }
+                .error { error in
+                    print("error getting url for id -> \(self.id), \(self.key)")
+                    reject(error)
+            }
+        }
+    }
+    
 #if os(iOS)
     public func image() -> Promise<UIImage> {
         return Promise { fulfill, reject in
@@ -384,6 +397,9 @@ public class GeocoreBinaryDataInfo: GeocoreInitializableFromJSON {
     private(set) public var contentLength: Int64?
     private(set) public var contentType: String?
     private(set) public var lastModified: NSDate?
+    
+    public init() {
+    }
     
     public required init(_ json: JSON) {
         if json.type == .String {

@@ -141,6 +141,9 @@ public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSO
     }
     public var content: [String: AnyObject]?
     
+    public init() {
+    }
+    
     public required init(_ json: JSON) {
         self.id = json["id"].string
         self.type = json["type"].string
