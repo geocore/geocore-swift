@@ -16,13 +16,13 @@ Pod::Spec.new do |s|
   #
 
   s.name         = "GeocoreKit"
-  s.version      = "0.2.5"
+  s.version      = "0.3.0"
   s.summary      = "Geocore Swift Client API"
 
   s.description  = <<-DESC
                    Pure Swift client library for accessing Geocore API server.
 
-                   * Currently under development. Doesn't do anything useful for now.
+                   * Currently under development.
                    DESC
 
   s.homepage     = "https://github.com/geocore/geocore-swift"
@@ -75,7 +75,7 @@ Pod::Spec.new do |s|
   #  Supports git, hg, bzr, svn and HTTP.
   #
 
-  s.source       = { :git => "https://github.com/geocore/geocore-swift.git", :tag => "0.2.5" }
+  s.source       = { :git => "https://github.com/geocore/geocore-swift.git", :tag => "0.3.0" }
 
 
   # ――― Source Code ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
