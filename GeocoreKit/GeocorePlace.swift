@@ -100,6 +100,10 @@ public class GeocorePlaceQuery: GeocoreTaggableQuery {
         return self.get("/places")
     }
     
+    public class func get(id: String) -> Promise<GeocorePlace> {
+        return GeocorePlaceQuery().withId(id).get();
+    }
+    
     public func all() -> Promise<[GeocorePlace]> {
         return self.all("/places")
     }

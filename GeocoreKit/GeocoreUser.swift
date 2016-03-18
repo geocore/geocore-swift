@@ -384,6 +384,10 @@ public class GeocoreUser: GeocoreTaggable {
         return user
     }
     
+    public class func get(id: String) -> Promise<GeocoreUser> {
+        return GeocoreUserQuery().withId(id).get();
+    }
+    
     public func register() -> Promise<GeocoreUser> {
         return GeocoreUserOperation().register(self)
     }

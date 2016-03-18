@@ -81,6 +81,10 @@ public class GeocoreItem: GeocoreTaggable {
         return dict
     }
     
+    public class func get(id: String) -> Promise<GeocoreItem> {
+        return GeocoreItemQuery().withId(id).get();
+    }
+    
     public override func query() -> GeocoreItemQuery {
         if let id = self.id {
             return GeocoreItemQuery().withId(id)
