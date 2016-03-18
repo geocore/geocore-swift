@@ -148,7 +148,15 @@ public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSO
         self.id = json["id"].string
         self.type = json["type"].string
         self.timestamp = json["timestamp"].int64
-        self.content = json["objContent"].dictionary?.map { ($0, $1.string!) }
+        self.content = json["objContent"].dictionary?.map { (key, optValue) -> (String, String) in
+            // some value may be nil (HA???)
+            //($0, $1.string!)
+            if let value = optValue.string {
+                return (key, value)
+            } else {
+                return (key, "")
+            }
+        }
     }
     
     public func toDictionary() -> [String: AnyObject] {
