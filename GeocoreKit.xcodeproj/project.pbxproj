@@ -21,6 +21,9 @@
 		A99BF3531AE769C100658BDA /* PromiseKit.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF34F1AE769C100658BDA /* PromiseKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A99BF3541AE769C100658BDA /* SwiftyJSON.framework in Copy Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF3501AE769C100658BDA /* SwiftyJSON.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A99BF3571AE76CB800658BDA /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A99BF3561AE76CB700658BDA /* AssetsLibrary.framework */; };
+		A9A1F9C91CA7E8A40085F341 /* GeocoreEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A1F9C61CA7E8A40085F341 /* GeocoreEvent.swift */; };
+		A9A1F9CA1CA7E8A40085F341 /* GeocoreFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A1F9C71CA7E8A40085F341 /* GeocoreFeed.swift */; };
+		A9A1F9CB1CA7E8A40085F341 /* GeocoreItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A1F9C81CA7E8A40085F341 /* GeocoreItem.swift */; };
 		A9BD24571ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24551ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework */; };
 		A9BD24581ADE5A2900CDEE4C /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */; };
 		A9BD245B1ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9BD24591ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework */; };
@@ -77,6 +80,9 @@
 		A99BF34F1AE769C100658BDA /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = ../Carthage/Build/iOS/PromiseKit.framework; sourceTree = "<group>"; };
 		A99BF3501AE769C100658BDA /* SwiftyJSON.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftyJSON.framework; path = ../Carthage/Build/iOS/SwiftyJSON.framework; sourceTree = "<group>"; };
 		A99BF3561AE76CB700658BDA /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.3.sdk/System/Library/Frameworks/AssetsLibrary.framework; sourceTree = DEVELOPER_DIR; };
+		A9A1F9C61CA7E8A40085F341 /* GeocoreEvent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeocoreEvent.swift; sourceTree = "<group>"; };
+		A9A1F9C71CA7E8A40085F341 /* GeocoreFeed.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeocoreFeed.swift; sourceTree = "<group>"; };
+		A9A1F9C81CA7E8A40085F341 /* GeocoreItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeocoreItem.swift; sourceTree = "<group>"; };
 		A9BD24551ADE5A2900CDEE4C /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = Carthage/Build/iOS/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
 		A9BD24561ADE5A2900CDEE4C /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = "<group>"; };
 		A9BD24591ADE5A6800CDEE4C /* OMGHTTPURLRQ.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OMGHTTPURLRQ.framework; path = Carthage/Build/Mac/OMGHTTPURLRQ.framework; sourceTree = "<group>"; };
@@ -205,6 +211,9 @@
 				A973C8D51C0178490086E8DF /* GeocoreTag.swift */,
 				A973C8D11C003FAA0086E8DF /* GeocoreUser.swift */,
 				A973C8D31C003FC20086E8DF /* GeocorePlace.swift */,
+				A9A1F9C61CA7E8A40085F341 /* GeocoreEvent.swift */,
+				A9A1F9C71CA7E8A40085F341 /* GeocoreFeed.swift */,
+				A9A1F9C81CA7E8A40085F341 /* GeocoreItem.swift */,
 				A98C218E1AE8934D0099BC9D /* GeocoreUtil.swift */,
 				A9E680821ADCF45F00FAE624 /* Supporting Files */,
 			);
@@ -403,8 +412,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				A98C218F1AE8934D0099BC9D /* GeocoreUtil.swift in Sources */,
+				A9A1F9C91CA7E8A40085F341 /* GeocoreEvent.swift in Sources */,
+				A9A1F9CB1CA7E8A40085F341 /* GeocoreItem.swift in Sources */,
 				A973C8D61C0178490086E8DF /* GeocoreTag.swift in Sources */,
 				A9F157121ADCF87000E6AC34 /* Geocore.swift in Sources */,
+				A9A1F9CA1CA7E8A40085F341 /* GeocoreFeed.swift in Sources */,
 				A9FC1CB91ADE1919004CCB3B /* GeocoreObject.swift in Sources */,
 				A973C8D21C003FAA0086E8DF /* GeocoreUser.swift in Sources */,
 				A973C8D41C003FC20086E8DF /* GeocorePlace.swift in Sources */,

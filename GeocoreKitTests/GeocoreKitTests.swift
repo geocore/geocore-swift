@@ -135,7 +135,7 @@ class GeocoreKitTests: XCTestCase {
         
         let newName = "Test Swift 2"
         
-        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 place.name = newName
                 return place.save()
@@ -158,7 +158,7 @@ class GeocoreKitTests: XCTestCase {
     func testC3_deletePlace() {
         let expectation = expectationWithDescription("Delete place expectation")
         
-        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 return place.delete()
@@ -180,7 +180,7 @@ class GeocoreKitTests: XCTestCase {
     func testC3_deletePlaceConfirm() {
         let expectation = expectationWithDescription("Delete place confirm expectation")
         
-        GeocorePlace.query().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Void in
                 XCTFail("Deleted place found, shouldn't happen")
             }
