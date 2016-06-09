@@ -480,6 +480,7 @@ public class GeocoreUserEventOperation: GeocoreRelationshipOperation {
     }
     
     public func leaveAs(relationshipType: GeocoreUserEventRelationshipType) -> Promise<GeocoreUserEvent> {
+        self.relationshipType = relationshipType
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             return Geocore.sharedInstance.promisedDELETE(buildPath("/users", withSubPath: "/events"))
         } else {

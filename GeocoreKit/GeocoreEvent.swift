@@ -38,6 +38,14 @@ public class GeocoreEventQuery: GeocoreTaggableQuery {
         }
     }
     
+    public func tags() -> Promise<[GeocoreTag]> {
+        if let path = buildPath("/events", withSubPath: "/tags") {
+            return Geocore.sharedInstance.promisedGET(path)
+        } else {
+            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+        }
+    }
+    
     public func placeRelationships() -> Promise<[GeocorePlaceEvent]> {
         if let path = buildPath("/events", withSubPath: "/places/relationships") {
             return Geocore.sharedInstance.promisedGET(path)
@@ -99,6 +107,10 @@ public class GeocoreEvent: GeocoreTaggable {
     
     public func places() -> Promise<[GeocorePlace]> {
         return query().places()
+    }
+    
+    public func tags() -> Promise<[GeocoreTag]> {
+        return query().tags()
     }
     
     public func currentlyOpen() -> Bool {

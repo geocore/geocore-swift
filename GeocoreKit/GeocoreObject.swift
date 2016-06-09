@@ -736,6 +736,13 @@ public class GeocoreObject: GeocoreIdentifiable {
         return self
     }
     
+    public func getCustomData(key: String) -> String? {
+        if let value = customData?[key] {
+            return value
+        }
+        return nil
+    }
+    
     public func updateCustomData(key: String, value: String?) -> Bool {
         var updated = false
         if let currentValue = self.customData?[key], newValue = value {
@@ -743,6 +750,9 @@ public class GeocoreObject: GeocoreIdentifiable {
                 self.customData![key] = newValue
                 updated = true
             }
+        } else if self.customData != nil && value != nil {
+            self.customData![key] = value
+            updated = true
         } else if self.customData == nil && value != nil {
             self.customData = [String: String?]()
             self.customData![key] = value

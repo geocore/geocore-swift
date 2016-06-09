@@ -147,7 +147,7 @@ public class GeocoreTaggableQuery: GeocoreObjectQuery {
         if tagDetails { dict["tag_detail"] = "true" }
         return dict
     }
-
+    
 }
 
 public class GeocoreTaggable: GeocoreObject {
