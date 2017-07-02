@@ -8,31 +8,31 @@
 
 import Foundation
 
-extension NSDateFormatter {
+extension DateFormatter {
     
-    class func dateFormatterWithEnUsPosixLocaleGMT() -> NSDateFormatter {
-        let dateFormatter = NSDateFormatter()
-        dateFormatter.locale = NSLocale(localeIdentifier: "en_US_POSIX")
-        dateFormatter.timeZone = NSTimeZone(abbreviation: "GMT")
+    class func dateFormatterWithEnUsPosixLocaleGMT() -> DateFormatter {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone(abbreviation: "GMT")
         return dateFormatter
     }
     
-    class func dateFormatterForGeocore() -> NSDateFormatter {
-        let dateFormatter = NSDateFormatter.dateFormatterWithEnUsPosixLocaleGMT()
+    class func dateFormatterForGeocore() -> DateFormatter {
+        let dateFormatter = DateFormatter.dateFormatterWithEnUsPosixLocaleGMT()
         dateFormatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
         return dateFormatter
     }
 }
 
-extension NSDate {
+extension Date {
     
     public func geocoreFormattedString() -> String {
-        return Geocore.geocoreDateFormatter.stringFromDate(self)
+        return Geocore.geocoreDateFormatter.string(from: self)
     }
     
-    public class func fromGeocoreFormattedString(string: String?) -> NSDate? {
+    public static func fromGeocoreFormattedString(_ string: String?) -> Date? {
         if let unwrappedString = string {
-            return Geocore.geocoreDateFormatter.dateFromString(unwrappedString)
+            return Geocore.geocoreDateFormatter.date(from: unwrappedString)
         } else {
             return nil
         }
@@ -44,7 +44,7 @@ extension NSDate {
 // https://gist.github.com/yuchi/b6d751272cf4cb2b841f
 extension Dictionary {
     
-    func map<K: Hashable, V>(transform: (Key, Value) -> (K, V)) -> Dictionary<K, V> {
+    func map<K: Hashable, V>(_ transform: (Key, Value) -> (K, V)) -> Dictionary<K, V> {
         var results: Dictionary<K, V> = [:]
         for key in self.keys {
             if let value = self[key] {
@@ -55,7 +55,7 @@ extension Dictionary {
         return results
     }
     
-    func filter(includeElement: (Key, Value) -> Bool) -> Dictionary<Key, Value> {
+    func filter(_ includeElement: (Key, Value) -> Bool) -> Dictionary<Key, Value> {
         var results: Dictionary<Key, Value> = [:]
         for key in self.keys {
             if let value = self[key] {
@@ -69,7 +69,7 @@ extension Dictionary {
     
 }
 
-func +=<KeyType, ValueType>(inout left: Dictionary<KeyType, ValueType>, right: Dictionary<KeyType, ValueType>) {
+func +=<KeyType, ValueType>(left: inout Dictionary<KeyType, ValueType>, right: Dictionary<KeyType, ValueType>) {
     for (k, v) in right {
         left.updateValue(v, forKey: k)
     }

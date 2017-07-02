@@ -11,12 +11,10 @@ import PromiseKit
 import GeocoreKit
 import SwiftyJSON
 
-/*
 private let GEOCORE_BASEURL = "http://put.geocore.api.server.url.here"
 private let GEOCORE_PROJECTID = "#PUT_PROJECT_ID_HERE#"
 private let GEOCORE_USERID = "#PUT_USER_ID_HERE#"
 private let GEOCORE_USERPASSWORD = "#PUT_USER_PASSWORD_HERE#"
-*/
 
 class Madu {
     var kadaluarsa: Bool?
@@ -27,7 +25,47 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     
-    func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+        
+        Geocore.sharedInstance
+            .setup(baseURL: GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+            .login(userId: GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .then { accessToken -> Promise<GeocoreUser> in
+                print("Access Token = \(accessToken)")
+                return GeocoreUser.get(GEOCORE_USERID)
+            }
+            .then { user -> Promise<[GeocorePlace]> in
+                print("--- The user as promised:")
+                print("Id = \(user.id!), Name = \(user.name!)")
+                return GeocorePlaceQuery()
+                    .withCenter(latitude: 35.666, longitude: 139.7126)
+                    .nearest()
+            }
+            .then { places -> Void in
+                print("--- Some places as promised:")
+                for place in places {
+                    print("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
+                }
+            }
+            .catch { error in
+                print("--- Cannot fulfill promise because of : \(error)")
+            }
+        
+        GeocorePlaceQuery()
+            .withRectangle(
+                minimumLatitude: 35.66617440081799,
+                minimumLongitude: 139.7126117348629,
+                maximumLatitude: 35.67753978462231,
+                maximumLongitude: 139.72917705773887)
+            .withinRectangle()
+            .then { places -> Void in
+                for place in places {
+                    print("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+                }
+            }
+            .catch { error in
+                print("--- Cannot fulfill promise because of : \(error)")
+            }
         
         /*
         Geocore.sharedInstance
@@ -309,10 +347,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         */
         
+        /*
         Geocore.sharedInstance
             .loginWithDefaultUser()
             .then { (accessToken: String) -> Promise<[GeocorePlace]> in
-                print("Access Token = \(accessToken), thread = \(NSThread.currentThread())")
+                print("Access Token = \(accessToken), thread = \(Thread.currentThread)")
                 return GeocorePlace.get(centerLat: 35.66617440081799, centerLon: 139.7126117348629)
             }
             .then { (places: [GeocorePlace]) -> Void in
@@ -321,9 +360,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     print("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
                 }
             }
-            .error { error in
+            .catch { error in
                 print(error)
         }
+        */
         
         /*
         Geocore.sharedInstance.loginWithDefaultUser().then { accessToken -> Void in
@@ -334,25 +374,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
-    func applicationWillResignActive(application: UIApplication) {
+    func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
         // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
     }
 
-    func applicationDidEnterBackground(application: UIApplication) {
+    func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
     }
 
-    func applicationWillEnterForeground(application: UIApplication) {
+    func applicationWillEnterForeground(_ application: UIApplication) {
         // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
     }
 
-    func applicationDidBecomeActive(application: UIApplication) {
+    func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     }
 
-    func applicationWillTerminate(application: UIApplication) {
+    func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
 

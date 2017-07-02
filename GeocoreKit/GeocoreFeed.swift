@@ -14,121 +14,121 @@ import PromiseKit
     import UIKit
 #endif
 
-public class GeocoreFeedOperation: GeocoreObjectOperation {
+open class GeocoreFeedOperation: GeocoreObjectOperation {
     
-    private(set) public var type: String?
-    private(set) public var idSpecifier: String?
-    private(set) public var content: [String: AnyObject]?
+    fileprivate(set) open var type: String?
+    fileprivate(set) open var idSpecifier: String?
+    fileprivate(set) open var content: [String: AnyObject]?
     
-    public func withType(type: String) -> Self {
+    open func with(type: String) -> Self {
         self.type = type
         return self
     }
     
-    public func withIdSpecifier(idSpecifier: String) -> Self {
+    open func with(idSpecifier: String) -> Self {
         self.idSpecifier = idSpecifier
         return self
     }
     
-    public func withContent(content: [String: AnyObject]) -> Self {
+    open func with(content: [String: AnyObject]) -> Self {
         self.content = content
         return self
     }
     
-    public override func buildQueryParameters() -> [String: AnyObject] {
+    open override func buildQueryParameters() -> Alamofire.Parameters {
         var dict = super.buildQueryParameters()
         if let type = self.type { dict["type"] = type }
         if let idSpecifier = self.idSpecifier { dict["spec"] = idSpecifier }
         return dict
     }
     
-    public func post() -> Promise<GeocoreFeed> {
-        if let path = self.buildPath("/objs", withSubPath: "/feed"), content = self.content {
+    open func post() -> Promise<GeocoreFeed> {
+        if let path = self.buildPath(forService: "/objs", withSubPath: "/feed"), let content = self.content {
             return Geocore.sharedInstance.promisedPOST(path, parameters: self.buildQueryParameters(), body: content)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id, content")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
         }
     }
     
 }
 
-public class GeocoreFeedQuery: GeocoreFeedOperation {
+open class GeocoreFeedQuery: GeocoreFeedOperation {
     
-    private(set) public var earliestTimestamp: Int64?
-    private(set) public var latestTimestamp: Int64?
-    private(set) public var startTimestamp: Int64?
-    private(set) public var endTimestamp: Int64?
-    private(set) public var page: Int?
-    private(set) public var numberPerPage: Int?
+    fileprivate(set) open var earliestTimestamp: Int64?
+    fileprivate(set) open var latestTimestamp: Int64?
+    fileprivate(set) open var startTimestamp: Int64?
+    fileprivate(set) open var endTimestamp: Int64?
+    fileprivate(set) open var page: Int?
+    fileprivate(set) open var numberPerPage: Int?
     
-    public func notEarlierThan(earliestDate: NSDate) -> Self {
+    open func notEarlierThan(_ earliestDate: Date) -> Self {
         self.earliestTimestamp = Int64(earliestDate.timeIntervalSince1970 * 1000)
         return self
     }
     
-    public func earlierThan(latestDate: NSDate) -> Self {
+    open func earlierThan(_ latestDate: Date) -> Self {
         self.latestTimestamp = Int64(latestDate.timeIntervalSince1970 * 1000)
         return self
     }
     
-    public func startingAt(startDate: NSDate) -> Self {
+    open func startingAt(_ startDate: Date) -> Self {
         self.startTimestamp = Int64(startDate.timeIntervalSince1970 * 1000)
         return self
     }
     
-    public func endingAt(endDate: NSDate) -> Self {
+    open func endingAt(_ endDate: Date) -> Self {
         self.endTimestamp = Int64(endDate.timeIntervalSince1970 * 1000)
         return self
     }
     
-    public func page(page: Int) -> Self {
+    open func page(_ page: Int) -> Self {
         self.page = page
         return self
     }
     
-    public func numberPerPage(numberPerPage: Int) -> Self {
+    open func numberPerPage(_ numberPerPage: Int) -> Self {
         self.numberPerPage = numberPerPage
         return self
     }
     
-    public override func buildQueryParameters() -> [String: AnyObject] {
+    open override func buildQueryParameters() -> Alamofire.Parameters {
         var dict = super.buildQueryParameters()
-        if let startTimestamp = self.startTimestamp, endTimestamp = self.endTimestamp {
+        if let startTimestamp = self.startTimestamp, let endTimestamp = self.endTimestamp {
             dict["from_timestamp"] = String(startTimestamp)
             dict["to_timestamp"] = String(endTimestamp)
         } else if let earliestTimestamp = self.earliestTimestamp {
-            dict["from_timestamp"] = String(earliestTimestamp)
+            dict["from_timestamp"] = String(earliestTimestamp) as AnyObject?
         } else if let latestTimestamp = self.latestTimestamp {
-            dict["to_timestamp"] = String(latestTimestamp)
+            dict["to_timestamp"] = String(latestTimestamp) as AnyObject?
         }
         if let page = self.page {
-            dict["page"] = page
+            dict["page"] = page as AnyObject?
         }
         if let numberPerPage = self.numberPerPage {
-            dict["num"] = numberPerPage
+            dict["num"] = numberPerPage as AnyObject?
         }
         return dict
     }
     
-    public func all() -> Promise<[GeocoreFeed]> {
-        if let path = self.buildPath("/objs", withSubPath: "/feed") {
+    open func all() -> Promise<[GeocoreFeed]> {
+        if let path = self.buildPath(forService: "/objs", withSubPath: "/feed") {
             return Geocore.sharedInstance.promisedGET(path, parameters: self.buildQueryParameters())
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
 }
 
-public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSON {
+open class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSON {
     
-    public var id: String?
-    public var type: String?
-    public var timestamp: Int64?
-    public var date: NSDate? {
+    open var id: String?
+    open var type: String?
+    open var timestamp: Int64?
+    open var date: Date? {
         get {
             if let timestamp = self.timestamp {
-                return NSDate(timeIntervalSince1970: Double(timestamp)/1000.0)
+                return Date(timeIntervalSince1970: Double(timestamp)/1000.0)
             } else {
                 return nil
             }
@@ -139,7 +139,7 @@ public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSO
             }
         }
     }
-    public var content: [String: AnyObject]?
+    open var content: [String: AnyObject]?
     
     public init() {
     }
@@ -156,18 +156,18 @@ public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSO
             } else {
                 return (key, "")
             }
-        }
+        } as [String : AnyObject]?
     }
     
-    public func toDictionary() -> [String: AnyObject] {
+    open func asDictionary() -> [String: Any] {
         if let content = self.content {
             return content
         } else {
-            return [String: AnyObject]()
+            return [String: Any]()
         }
     }
     
-    private func resolveType() -> String? {
+    fileprivate func resolveType() -> String? {
         if let type = self.type {
             return type
         } else if let id = self.id {
@@ -190,15 +190,15 @@ public class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSO
         return nil
     }
     
-    public func post() -> Promise<GeocoreFeed> {
-        if let id = self.id, content = self.content {
-            let op = GeocoreFeedOperation().withId(id).withContent(content)
+    open func post() -> Promise<GeocoreFeed> {
+        if let id = self.id, let content = self.content {
+            let op = GeocoreFeedOperation().with(id: id).with(content: content)
             if let type = self.resolveType() {
-                op.withType(type)
+                _ = op.with(type: type)
             }
             return op.post()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id, content")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
         }
     }
     

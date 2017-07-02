@@ -17,46 +17,46 @@ public enum GeocoreItemType: String {
     case Unknown = ""
 }
 
-public class GeocoreItemQuery: GeocoreTaggableQuery {
+open class GeocoreItemQuery: GeocoreTaggableQuery {
     
-    private(set) public var validItems: Bool?
+    fileprivate(set) open var validItems: Bool?
     
-    public func onlyValidItems() -> Self {
+    open func onlyValidItems() -> Self {
         self.validItems = true
         return self
     }
     
-    public override func buildQueryParameters() -> [String: AnyObject] {
+    open override func buildQueryParameters() -> Alamofire.Parameters {
         var dict = super.buildQueryParameters()
         if let validItems = self.validItems { if validItems { dict["valid_only"] = "true" } }
         return dict
     }
     
-    public func get() -> Promise<GeocoreItem> {
-        return self.get("/items")
+    open func get() -> Promise<GeocoreItem> {
+        return self.get(forService: "/items")
     }
     
-    public func all() -> Promise<[GeocoreItem]> {
-        return self.all("/items")
+    open func all() -> Promise<[GeocoreItem]> {
+        return self.all(forService: "/items")
     }
     
-    public func events() -> Promise<[GeocoreEvent]> {
-        if let path = buildPath("/items", withSubPath: "/events") {
+    open func events() -> Promise<[GeocoreEvent]> {
+        if let path = buildPath(forService: "/items", withSubPath: "/events") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
 }
 
-public class GeocoreItem: GeocoreTaggable {
+open class GeocoreItem: GeocoreTaggable {
     
-    public var shortName: String?
-    public var shortDescription: String?
-    public var type: GeocoreItemType?
-    public var validTimeStart: NSDate?
-    public var validTimeEnd: NSDate?
+    open var shortName: String?
+    open var shortDescription: String?
+    open var type: GeocoreItemType?
+    open var validTimeStart: Date?
+    open var validTimeEnd: Date?
     
     public override init() {
         super.init()
@@ -66,13 +66,13 @@ public class GeocoreItem: GeocoreTaggable {
         self.shortName = json["shortName"].string
         self.shortDescription = json["shortDescription"].string
         if let type = json["type"].string { self.type = GeocoreItemType(rawValue: type) }
-        self.validTimeStart = NSDate.fromGeocoreFormattedString(json["validTimeStart"].string)
-        self.validTimeEnd = NSDate.fromGeocoreFormattedString(json["validTimeEnd"].string)
+        self.validTimeStart = Date.fromGeocoreFormattedString(json["validTimeStart"].string)
+        self.validTimeEnd = Date.fromGeocoreFormattedString(json["validTimeEnd"].string)
         super.init(json)
     }
     
-    public override func toDictionary() -> [String: AnyObject] {
-        var dict = super.toDictionary()
+    open override func asDictionary() -> [String: Any] {
+        var dict = super.asDictionary()
         if let shortName = self.shortName { dict["shortName"] = shortName }
         if let shortDescription = self.shortDescription { dict["shortDescription"] = shortDescription }
         if let type = self.type { dict["type"] = type.rawValue }
@@ -81,19 +81,19 @@ public class GeocoreItem: GeocoreTaggable {
         return dict
     }
     
-    public class func get(id: String) -> Promise<GeocoreItem> {
-        return GeocoreItemQuery().withId(id).get();
+    open class func get(_ id: String) -> Promise<GeocoreItem> {
+        return GeocoreItemQuery().with(id: id).get();
     }
     
-    public override func query() -> GeocoreItemQuery {
+    open override func query() -> GeocoreItemQuery {
         if let id = self.id {
-            return GeocoreItemQuery().withId(id)
+            return GeocoreItemQuery().with(id: id)
         } else {
             return GeocoreItemQuery()
         }
     }
     
-    public class func all() -> Promise<[GeocoreItem]> {
+    open class func all() -> Promise<[GeocoreItem]> {
         return GeocoreItemQuery().all()
     }
     

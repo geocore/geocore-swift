@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   #
 
   s.name         = "GeocoreKit"
-  s.version      = "0.3.2"
+  s.version      = "0.4.0"
   s.summary      = "Geocore Swift Client API"
 
   s.description  = <<-DESC
@@ -75,7 +75,7 @@ Pod::Spec.new do |s|
   #  Supports git, hg, bzr, svn and HTTP.
   #
 
-  s.source       = { :git => "https://github.com/geocore/geocore-swift.git", :tag => "0.3.0" }
+  s.source       = { :git => "https://github.com/geocore/geocore-swift.git", :tag => "0.4.0" }
 
 
   # ――― Source Code ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -127,9 +127,9 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   # s.xcconfig = { "HEADER_SEARCH_PATHS" => "$(SDKROOT)/usr/include/libxml2" }
-  s.dependency "Alamofire", "~> 3.0"
-  s.dependency "AlamofireImage", "~> 2.0"
-  s.dependency "SwiftyJSON", "~> 2.3"
-  s.dependency "PromiseKit/Swift/Promise", "~> 3.0"
+  s.dependency "PromiseKit", "~> 4.0"
+  s.dependency "Alamofire", "~> 4.3"
+  s.dependency "AlamofireImage", "~> 3.1"
+  s.dependency "SwiftyJSON"
 
 end

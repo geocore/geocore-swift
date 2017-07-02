@@ -11,111 +11,111 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
-public class GeocoreEventQuery: GeocoreTaggableQuery {
+open class GeocoreEventQuery: GeocoreTaggableQuery {
     
-    private(set) public var centerLatitude: Double?
-    private(set) public var centerLongitude: Double?
+    fileprivate(set) open var centerLatitude: Double?
+    fileprivate(set) open var centerLongitude: Double?
     
-    public func withCenter(latitude latitude: Double, longitude: Double) -> Self {
+    open func withCenter(latitude: Double, longitude: Double) -> Self {
         self.centerLatitude = latitude
         self.centerLongitude = longitude
         return self
     }
     
-    public func get() -> Promise<GeocoreEvent> {
-        return self.get("/events")
+    open func get() -> Promise<GeocoreEvent> {
+        return self.get(forService: "/events")
     }
     
-    public func all() -> Promise<[GeocoreEvent]> {
-        return self.all("/events")
+    open func all() -> Promise<[GeocoreEvent]> {
+        return self.all(forService: "/events")
     }
     
-    public func places() -> Promise<[GeocorePlace]> {
-        if let path = buildPath("/events", withSubPath: "/places") {
+    open func places() -> Promise<[GeocorePlace]> {
+        if let path = buildPath(forService: "/events", withSubPath: "/places") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
-    public func tags() -> Promise<[GeocoreTag]> {
-        if let path = buildPath("/events", withSubPath: "/tags") {
+    open func tags() -> Promise<[GeocoreTag]> {
+        if let path = buildPath(forService: "/events", withSubPath: "/tags") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
-    public func placeRelationships() -> Promise<[GeocorePlaceEvent]> {
-        if let path = buildPath("/events", withSubPath: "/places/relationships") {
+    open func placeRelationships() -> Promise<[GeocorePlaceEvent]> {
+        if let path = buildPath(forService: "/events", withSubPath: "/places/relationships") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting id")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
-    public func nearest() -> Promise<[GeocoreEvent]> {
-        if let centerLatitude = self.centerLatitude, centerLongitude = self.centerLongitude {
+    open func nearest() -> Promise<[GeocoreEvent]> {
+        if let centerLatitude = self.centerLatitude, let centerLongitude = self.centerLongitude {
             var dict = super.buildQueryParameters()
-            dict["lat"] = centerLatitude
-            dict["lon"] = centerLongitude
+            dict["lat"] = centerLatitude as AnyObject?
+            dict["lon"] = centerLongitude as AnyObject?
             return Geocore.sharedInstance.promisedGET("/events/search/nearest", parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.InvalidParameter(message: "Expecting center lat-lon")) }
+            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
         }
     }
     
 }
 
-public class GeocoreEvent: GeocoreTaggable {
+open class GeocoreEvent: GeocoreTaggable {
     
-    private(set) public var timeStart: NSDate?
-    private(set) public var timeEnd: NSDate?
+    fileprivate(set) open var timeStart: Date?
+    fileprivate(set) open var timeEnd: Date?
     
     public override init() {
         super.init()
     }
     
     public required init(_ json: JSON) {
-        self.timeStart = NSDate.fromGeocoreFormattedString(json["timeStart"].string)
-        self.timeEnd = NSDate.fromGeocoreFormattedString(json["timeEnd"].string)
+        self.timeStart = Date.fromGeocoreFormattedString(json["timeStart"].string)
+        self.timeEnd = Date.fromGeocoreFormattedString(json["timeEnd"].string)
         super.init(json)
     }
     
-    public override func toDictionary() -> [String: AnyObject] {
-        var dict = super.toDictionary()
+    open override func asDictionary() -> [String: Any] {
+        var dict = super.asDictionary()
         if let timeStart = self.timeStart { dict["timeStart"] = timeStart.geocoreFormattedString() }
         if let timeEnd = self.timeEnd { dict["timeEnd"] = timeEnd.geocoreFormattedString() }
         return dict
     }
     
-    public class func get(id: String) -> Promise<GeocoreEvent> {
-        return GeocoreEventQuery().withId(id).get();
+    open class func get(_ id: String) -> Promise<GeocoreEvent> {
+        return GeocoreEventQuery().with(id: id).get();
     }
     
-    public override func query() -> GeocoreEventQuery {
+    open override func query() -> GeocoreEventQuery {
         if let id = self.id {
-            return GeocoreEventQuery().withId(id)
+            return GeocoreEventQuery().with(id: id)
         } else {
             return GeocoreEventQuery()
         }
     }
     
-    public class func all() -> Promise<[GeocoreEvent]> {
+    open class func all() -> Promise<[GeocoreEvent]> {
         return GeocoreEventQuery().all()
     }
     
-    public func places() -> Promise<[GeocorePlace]> {
+    open func places() -> Promise<[GeocorePlace]> {
         return query().places()
     }
     
-    public func tags() -> Promise<[GeocoreTag]> {
+    open func tags() -> Promise<[GeocoreTag]> {
         return query().tags()
     }
     
-    public func currentlyOpen() -> Bool {
-        if let timeStart = self.timeStart, timeEnd = self.timeEnd {
-            let now = NSDate()
+    open func currentlyOpen() -> Bool {
+        if let timeStart = self.timeStart, let timeEnd = self.timeEnd {
+            let now = Date()
             return timeStart.timeIntervalSince1970 <= now.timeIntervalSince1970 && now.timeIntervalSince1970 <= timeEnd.timeIntervalSince1970
         }
         return false

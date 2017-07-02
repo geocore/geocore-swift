@@ -53,8 +53,8 @@ import PromiseKit
 import GeocoreKit
 
 Geocore.sharedInstance
-    .setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
-    .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+    .setup(baseURL: GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+    .login(userId: GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
     .then { accessToken -> Promise<GeocoreUser> in
         print("Access Token = \(accessToken)")
         return GeocoreUser.get(GEOCORE_USERID)
@@ -72,6 +72,9 @@ Geocore.sharedInstance
             print("Id = \(place.id!), Name = \(place.name!), Point = (\(place.point!.latitude!), \(place.point!.longitude!))")
         }
     }
+    .catch { error in
+        print("--- Cannot fulfill promise because of : \(error)")
+    }
 ```
 
 Following example shows how to get places within a specified rectangle:
@@ -84,7 +87,12 @@ GeocorePlaceQuery()
         maximumLongitude: 139.72917705773887)
     .withinRectangle()
     .then { places -> Void in
-        println("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+        for place in places {
+            print("Id = \(place.id), Name = \(place.name), Point = (\(place.point?.latitude), \(place.point?.longitude))")
+        }
+    }
+    .catch { error in
+        print("--- Cannot fulfill promise because of : \(error)")
     }
 ```
 

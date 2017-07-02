@@ -23,7 +23,7 @@ private let PLACE_TEST_1_PT = GeocorePoint(latitude: 35.65858, longitude: 139.74
 class GeocoreKitTests: XCTestCase {
     
     override class func setUp() {
-        Geocore.sharedInstance.setup(GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
+        Geocore.sharedInstance.setup(baseURL: GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
     }
     
     override func setUp() {
@@ -37,13 +37,13 @@ class GeocoreKitTests: XCTestCase {
     // MARK: - Security
     
     func testA1_loginFailure() {
-        let expectation = expectationWithDescription("Login failure expectation")
+        let expectation = self.expectation(description: "Login failure expectation")
         
         Geocore.sharedInstance
-            .login("dummy_userid", password: "dummy_password")
-            .error { error in
+            .login(userId: "dummy_userid", password: "dummy_password")
+            .catch { error in
                 switch error {
-                case GeocoreError.ServerError(let code, _):
+                case GeocoreError.serverError(let code, _):
                     XCTAssert(code == "Auth.0001")
                 default:
                     XCTFail("Unexpected server error: \(error)")
@@ -51,27 +51,27 @@ class GeocoreKitTests: XCTestCase {
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for failed login = \(error)")
         })
     }
     
     func testA2_loginSuccessful() {
-        let expectation = expectationWithDescription("Login successful expectation")
+        let expectation = self.expectation(description: "Login successful expectation")
         
         Geocore.sharedInstance
-            .login(GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
+            .login(userId: GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
             .then { (accessToken: String) -> Void in
                 print("Access Token = \(accessToken)")
                 XCTAssert(accessToken.characters.count > 0)
                 expectation.fulfill()
             }
-            .error { error in
+            .catch { error in
                 XCTFail("Error logging in: \(error)")
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for successful login = \(error)")
         })
     }
@@ -79,19 +79,19 @@ class GeocoreKitTests: XCTestCase {
     // MARK: - Object
     
     func testB1_getObject() {
-        let expectation = expectationWithDescription("Get single object expectation")
+        let expectation = self.expectation(description: "Get single object expectation")
         
         GeocoreObject.get(GEOCORE_USERID)
             .then { (object: GeocoreObject) -> Void in
                 XCTAssertEqual(object.id!, GEOCORE_USERID)
                 expectation.fulfill()
             }
-            .error { error in
+            .catch { error in
                 XCTFail("Error getting object: \(error)")
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for single object = \(error)")
         })
     }
@@ -99,7 +99,7 @@ class GeocoreKitTests: XCTestCase {
     // MARK: - Place
     
     func testC1_createPlace() {
-        let expectation = expectationWithDescription("Create place expectation")
+        let expectation = self.expectation(description: "Create place expectation")
         
         let tags = ["駅", "テゴリー1", "カテゴリー2"]
         
@@ -114,28 +114,28 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 XCTAssertEqual(place.name!, PLACE_TEST_1_NAME)
                 for tag in place.tags! {
-                    if  tags.indexOf(tag.name!) == nil {
+                    if  tags.index(of: tag.name!) == nil {
                         XCTFail("Unexpected tag: \(tag.name!)")
                     }
                 }
                 expectation.fulfill()
             }
-            .error { error in
+            .catch { error in
                 XCTFail("Error creating place: \(error)")
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for place creation = \(error)")
         })
     }
     
     func testC2_getAndUpdatePlace() {
-        let expectation = expectationWithDescription("Update place expectation")
+        let expectation = self.expectation(description: "Update place expectation")
         
         let newName = "Test Swift 2"
         
-        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().with(id: PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 place.name = newName
                 return place.save()
@@ -145,20 +145,20 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(place.name!, newName)
                 expectation.fulfill()
             }
-            .error { error in
+            .catch { error in
                 XCTFail("Error creating place: \(error)")
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for place update = \(error)")
         })
     }
     
     func testC3_deletePlace() {
-        let expectation = expectationWithDescription("Delete place expectation")
+        let expectation = self.expectation(description: "Delete place expectation")
         
-        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().with(id: PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Promise<GeocorePlace> in
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 return place.delete()
@@ -167,26 +167,26 @@ class GeocoreKitTests: XCTestCase {
                 XCTAssertEqual(place.id!, PLACE_TEST_1_ID)
                 expectation.fulfill()
             }
-            .error { error in
+            .catch { error in
                 XCTFail("Error deleting place: \(error)")
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for place delete = \(error)")
         })
     }
     
     func testC3_deletePlaceConfirm() {
-        let expectation = expectationWithDescription("Delete place confirm expectation")
+        let expectation = self.expectation(description: "Delete place confirm expectation")
         
-        GeocorePlaceQuery().withId(PLACE_TEST_1_ID).get()
+        GeocorePlaceQuery().with(id: PLACE_TEST_1_ID).get()
             .then { (place: GeocorePlace) -> Void in
                 XCTFail("Deleted place found, shouldn't happen")
             }
-            .error { error in
+            .catch { error in
                 switch error {
-                case GeocoreError.ServerError(let code, _):
+                case GeocoreError.serverError(let code, _):
                     XCTAssert(code == "General.0011")
                 default:
                     XCTFail("Unexpected server error: \(error)")
@@ -194,7 +194,7 @@ class GeocoreKitTests: XCTestCase {
                 expectation.fulfill()
             }
         
-        waitForExpectationsWithTimeout(5.0, handler: { (error) -> Void in
+        waitForExpectations(timeout: 5.0, handler: { (error) -> Void in
             print("Error waiting for place delete confirmation = \(error)")
         })
     }

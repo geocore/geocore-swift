@@ -2,8 +2,8 @@
 //  Geocore.swift
 //  GeocoreKit
 //
-//  Created by Purbo Mohamad on 4/14/15.
-//
+//  Created by Purbo Mohamad on 2017/02/10.
+//  Copyright © 2017 Geocore. All rights reserved.
 //
 
 import Foundation
@@ -11,63 +11,144 @@ import Alamofire
 import SwiftyJSON
 import PromiseKit
 
-struct GeocoreConstants {
-    private static let BundleKeyBaseURL = "GeocoreBaseURL"
-    private static let BundleKeyProjectID = "GeocoreProjectId"
-    private static let HTTPHeaderAccessTokenName = "Geocore-Access-Token"
+// MARK: - Constants
+
+fileprivate struct GeocoreConstants {
+    fileprivate static let bundleKeyBaseURL = "GeocoreBaseURL"
+    fileprivate static let bundleKeyProjectID = "GeocoreProjectId"
+    fileprivate static let httpHeaderAccessTokenName = "Geocore-Access-Token"
 }
 
-/**
-    GeocoreKit error code.
-
-    - InvalidState:            Unexpected internal state. Possibly a bug.
-    - InvalidServerResponse:   Unexpected server response. Possibly a bug.
-    - UnexpectedResponse:      Unexpected response format. Possibly a bug.
-    - ServerError:             Server returns an error.
-    - TokenUndefined:          Token is unavailable. Possibly the library is left uninitialized or user is not logged in.
-    - UnauthorizedAccess:      Access to the specified resource is forbidden. Possibly the user is not logged in.
-    - InvalidParameter:        One of the parameter passed to the API is invalid.
-    - NetworkError:            Underlying network library produces an error.
-*/
-public enum GeocoreError: ErrorType {
-    case InvalidState
-    case InvalidServerResponse(statusCode: Int)
-    case UnexpectedResponse(message: String)
-    case ServerError(code: String, message: String)
-    case TokenUndefined
-    case UnauthorizedAccess
-    case InvalidParameter(message: String)
-    case NetworkError(error: NSError)
+/// GeocoreKit error code.
+///
+/// - invalidState: Unexpected internal state. Possibly a bug.
+/// - invalidServerResponse: Unexpected server response. Possibly a bug.
+/// - unexpectedResponse: Unexpected response format. Possibly a bug.
+/// - serverError: Server returns an error.
+/// - tokenUndefined: Token is unavailable. Possibly the library is left uninitialized or user is not logged in.
+/// - unauthorizedAccess: Access to the specified resource is forbidden. Possibly the user is not logged in.
+/// - invalidParameter: One of the parameter passed to the API is invalid.
+/// - networkError: Underlying network library produces an error.
+public enum GeocoreError: Error {
+    case invalidState
+    case invalidServerResponse(statusCode: Int)
+    case unexpectedResponse(message: String)
+    case serverError(code: String, message: String)
+    case tokenUndefined
+    case unauthorizedAccess
+    case invalidParameter(message: String)
+    case networkError(error: Error)
+    case otherError(error: Error)
 }
 
+
+/// GeocoreError.invalidServerResponse code for locally generated errors.
+///
+/// - unavailable: No information available about the error. Possibly a bug.
+/// - unexpectedResponse: Server returns unexpected (unstructured) response. Possibly a bug.
 public enum GeocoreServerResponse: Int {
-    case Unavailable = -1
-    case UnexpectedResponse = -2
+    case unavailable = -1
+    case unexpectedResponse = -2
+    case emptyResponse = -3
 }
 
-/**
-    Representing an object that can be initialized from JSON data.
- */
+// MARK: - Helper extensions
+
+fileprivate extension Alamofire.URLEncoding {
+    
+    /// Almost like URLEncoding's encode, except that this will ALWAYS encode the parameters as URL query parameters
+    fileprivate func geocoreEncode(_ urlRequest: URLRequestConvertible, with parameters: Parameters?) throws -> URLRequest {
+        var urlRequest = try urlRequest.asURLRequest()
+        
+        guard let parameters = parameters else { return urlRequest }
+        
+        guard let url = urlRequest.url else {
+            throw AFError.parameterEncodingFailed(reason: .missingURL)
+        }
+        
+        if var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false), !parameters.isEmpty {
+            let percentEncodedQuery = (urlComponents.percentEncodedQuery.map { $0 + "&" } ?? "") + geocoreQuery(parameters)
+            urlComponents.percentEncodedQuery = percentEncodedQuery
+            urlRequest.url = urlComponents.url
+        }
+        
+        return urlRequest
+    }
+    
+    /// A copy of URLEncoding's query, but it's declared as private
+    private func geocoreQuery(_ parameters: [String: Any]) -> String {
+        var components: [(String, String)] = []
+        
+        for key in parameters.keys.sorted(by: <) {
+            let value = parameters[key]!
+            components += queryComponents(fromKey: key, value: value)
+        }
+        
+        return components.map { "\($0)=\($1)" }.joined(separator: "&")
+    }
+    
+}
+
+/// Alamofire's SessionManager extended so that a request can have both URL-encoded parameters and JSON-encoded body
+fileprivate extension Alamofire.SessionManager {
+    
+    @discardableResult
+    fileprivate func requestWithParametersAndBody(
+        _ url: URLConvertible,
+        method: HTTPMethod = .get,
+        parameters: Parameters? = nil,
+        body: Parameters? = nil,
+        headers: HTTPHeaders? = nil) throws -> DataRequest {
+        
+        // if both parameters & body are defined: JSON encoding for the body, URL encoding for parameters
+        // if only parameters is defined: URL encoding for parameters
+        // if only body is defined: JSON encoding for body
+        
+        if let parameters = parameters, let body = body {
+            let originalURLRequest = try URLRequest(url: url, method: method, headers: headers)
+            var encodedURLRequest = try URLEncoding.default.geocoreEncode(originalURLRequest, with: parameters)
+            let data = try JSONSerialization.data(withJSONObject: body, options: [])
+            // force JSON encoding
+            encodedURLRequest.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            encodedURLRequest.httpBody = data
+            
+            return request(encodedURLRequest)
+        } else if let parameters = parameters {
+            let originalURLRequest = try URLRequest(url: url, method: method, headers: headers)
+            var encodedURLRequest = try URLEncoding.default.geocoreEncode(originalURLRequest, with: parameters)
+            // force JSON encoding
+            encodedURLRequest.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            return request(encodedURLRequest)
+            //return request(url, method: method, parameters: parameters, encoding: URLEncoding.default, headers: headers)
+        } else if let body = body {
+            return request(url, method: method, parameters: body, encoding: JSONEncoding.default, headers: headers)
+        } else {
+            return request(url, method: method, parameters: parameters, encoding: JSONEncoding.default, headers: headers)
+        }
+    }
+    
+}
+
+// MARK: - Base structures
+
+/// Representing an object that can be initialized from JSON data.
 public protocol GeocoreInitializableFromJSON {
     init(_ json: JSON)
 }
 
-/**
-    Representing an object that can be serialized to JSON.
-*/
+/// Representing an object that can be serialized to JSON.
 public protocol GeocoreSerializableToJSON {
-    func toDictionary() -> [String: AnyObject]
+    func asDictionary() -> [String: Any]
 }
 
+/// Representing an object can be identified
 public protocol GeocoreIdentifiable: GeocoreInitializableFromJSON, GeocoreSerializableToJSON {
     var sid: Int64? { get set }
     var id: String? { get set }
 }
 
-/**
-    A wrapper for raw JSON value returned by Geocore service.
-*/
-public class GeocoreGenericResult: GeocoreInitializableFromJSON {
+/// A wrapper for raw JSON value returned by Geocore service.
+open class GeocoreGenericResult: GeocoreInitializableFromJSON {
     
     private(set) public var json: JSON
     
@@ -76,10 +157,8 @@ public class GeocoreGenericResult: GeocoreInitializableFromJSON {
     }
 }
 
-/**
-    A wrapper for count request returned by Geocore service.
- */
-public class GeocoreGenericCountResult: GeocoreInitializableFromJSON {
+/// A wrapper for count request returned by Geocore service.
+open class GeocoreGenericCountResult: GeocoreInitializableFromJSON {
     
     private(set) public var count: Int?
     
@@ -89,9 +168,7 @@ public class GeocoreGenericCountResult: GeocoreInitializableFromJSON {
     
 }
 
-/**
-    Geographical point in WGS84.
- */
+/// Geographical point in WGS84.
 public struct GeocorePoint: GeocoreSerializableToJSON, GeocoreInitializableFromJSON {
     
     public var latitude: Float?
@@ -110,36 +187,34 @@ public struct GeocorePoint: GeocoreSerializableToJSON, GeocoreInitializableFromJ
         self.longitude = json["longitude"].float
     }
     
-    public func toDictionary() -> [String: AnyObject] {
-        if let latitude = self.latitude, longitude = self.longitude {
-            return ["latitude": NSNumber(float: latitude), "longitude": NSNumber(float: longitude)]
+    public func asDictionary() -> [String: Any] {
+        if let latitude = self.latitude, let longitude = self.longitude {
+            return ["latitude": latitude, "longitude": longitude]
         } else {
-            return [String: AnyObject]()
+            return [String: Any]()
         }
     }
 }
 
-/**
-    Representing a result returned by Geocore service.
-
-    - Success: Containing value of the result.
-    - Failure: Containing an error.
-*/
+/// Representing a result returned by Geocore service.
+///
+/// - success: Containing value of the result.
+/// - failure: Containing an error.
 public enum GeocoreResult<T> {
-    case Success(T)
-    case Failure(GeocoreError)
+    case success(T)
+    case failure(GeocoreError)
     
     public init(_ value: T) {
-        self = .Success(value)
+        self = .success(value)
     }
     
     public init(_ error: GeocoreError) {
-        self = .Failure(error)
+        self = .failure(error)
     }
     
     public var failed: Bool {
         switch self {
-        case .Failure(_):
+        case .failure(_):
             return true
         default:
             return false
@@ -148,7 +223,7 @@ public enum GeocoreResult<T> {
     
     public var error: GeocoreError? {
         switch self {
-        case .Failure(let error):
+        case .failure(let error):
             return error
         default:
             return nil
@@ -157,149 +232,76 @@ public enum GeocoreResult<T> {
     
     public var value: T? {
         switch self {
-        case .Success(let value):
+        case .success(let value):
             return value
         default:
             return nil
         }
     }
     
-    public func propagateTo(fulfill: (T) -> Void, reject: (ErrorType) -> Void) -> Void {
+    public func propagate(toFulfillment fulfill: (T) -> Void, rejection reject: (Error) -> Void) -> Void {
         switch self {
-        case .Success(let value):
+        case .success(let value):
             fulfill(value)
-        case .Failure(let error):
+        case .failure(let error):
             reject(error)
         }
     }
 }
 
-// MARK: -
+// MARK: - Main class
 
-/**
- *  Main singleton class.
- */
-public class Geocore: NSObject {
+/// Main singleton class for accessing Geocore.
+open class Geocore {
     
-    /// Singleton instance
+    /// Singleton instance.
     public static let sharedInstance = Geocore()
-    public static let geocoreDateFormatter = NSDateFormatter.dateFormatterForGeocore()
+    /// Default Geocore date formatter
+    public static let geocoreDateFormatter = DateFormatter.dateFormatterForGeocore()
     
+    /// Currently used Geocore base URL.
     public private(set) var baseURL: String?
+    /// Currently used Geocore project ID.
     public private(set) var projectId: String?
+    /// Currently logged in user ID (if logged in).
     public private(set) var userId: String?
-    private var token: String?
+    /// Access token of currently logged in user (if logged in).
+    public var token: String?
     
-    private override init() {
-        self.baseURL = NSBundle.mainBundle().objectForInfoDictionaryKey(GeocoreConstants.BundleKeyBaseURL) as? String
-        self.projectId = NSBundle.mainBundle().objectForInfoDictionaryKey(GeocoreConstants.BundleKeyProjectID) as? String
+    private init() {
+        baseURL = Bundle.main.object(forInfoDictionaryKey: GeocoreConstants.bundleKeyBaseURL) as? String
+        projectId = Bundle.main.object(forInfoDictionaryKey: GeocoreConstants.bundleKeyProjectID) as? String
     }
     
-    /**
-        Setting up the library.
-    
-        :param: baseURL   Geocore server endpoint
-        :param: projectId Project ID
-    
-        :returns: Geocore object
-    */
     public func setup(baseURL: String, projectId: String) -> Geocore {
         self.baseURL = baseURL;
         self.projectId = projectId;
         return self;
     }
     
-    // MARK: Private utilities
+    // MARK: Internal low-level methods
     
-    private func path(servicePath: String) -> String? {
+    private func buildUrl(_ servicePath: String) throws -> String {
         if let baseURL = self.baseURL {
             return baseURL + servicePath
         } else {
-            return nil
+            throw GeocoreError.invalidState
         }
     }
     
-    private func mutableURLRequest(method: Alamofire.Method, path: String, token: String) -> NSMutableURLRequest {
-        let ret = NSMutableURLRequest(URL: NSURL(string: path)!)
-        ret.HTTPMethod = method.rawValue
-        ret.setValue(token, forHTTPHeaderField: GeocoreConstants.HTTPHeaderAccessTokenName)
-        return ret
-    }
-    
-    private func generateMultipartBoundaryConstant() -> String {
-        return NSString(format: "Boundary+%08X%08X", arc4random(), arc4random()) as String
-    }
-    
-    private func multipartURLRequest(method: Alamofire.Method, path: String, token: String, fieldName: String, fileName: String, mimeType: String, fileContents: NSData) -> NSMutableURLRequest {
-        
-        let mutableURLRequest = self.mutableURLRequest(.POST, path: path, token: token)
-        
-        let boundaryConstant = self.generateMultipartBoundaryConstant()
-        let boundaryStart = "--\(boundaryConstant)\r\n"
-        let boundaryEnd = "--\(boundaryConstant)--\r\n"
-        let contentDispositionString = "Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n"
-        let contentTypeString = "Content-Type: \(mimeType)\r\n\r\n"
-        
-        let requestBodyData : NSMutableData = NSMutableData()
-        requestBodyData.appendData(boundaryStart.dataUsingEncoding(NSUTF8StringEncoding)!)
-        requestBodyData.appendData(contentDispositionString.dataUsingEncoding(NSUTF8StringEncoding)!)
-        requestBodyData.appendData(contentTypeString.dataUsingEncoding(NSUTF8StringEncoding)!)
-        requestBodyData.appendData(fileContents)
-        requestBodyData.appendData("\r\n".dataUsingEncoding(NSUTF8StringEncoding)!)
-        requestBodyData.appendData(boundaryEnd.dataUsingEncoding(NSUTF8StringEncoding)!)
-        
-        mutableURLRequest.setValue("multipart/form-data; boundary=\(boundaryConstant)", forHTTPHeaderField: "Content-Type")
-        mutableURLRequest.HTTPBody = requestBodyData
-        
-        return mutableURLRequest
-    }
-    
-    private func parameterEncoding(method: Alamofire.Method) -> Alamofire.ParameterEncoding {
-        switch method {
-        case .GET, .HEAD, .DELETE:
-            return .URL
-        default:
-            return .JSON
-        }
-    }
-    
-    // from Alamofire internal
-    func escape(string: String) -> String {
-        let legalURLCharactersToBeEscaped: CFStringRef = ":&=;+!@#$()',*"
-        return CFURLCreateStringByAddingPercentEscapes(nil, string, nil, legalURLCharactersToBeEscaped, CFStringBuiltInEncodings.UTF8.rawValue) as String
-    }
-    
-    // from Alamofire internal
-    func queryComponents(key: String, _ value: AnyObject) -> [(String, String)] {
-        var components: [(String, String)] = []
-        if let dictionary = value as? [String: AnyObject] {
-            for (nestedKey, value) in dictionary {
-                components += queryComponents("\(key)[\(nestedKey)]", value)
-            }
-        } else if let array = value as? [AnyObject] {
-            for value in array {
-                components += queryComponents("\(key)[]", value)
-            }
-        } else {
-            components.appendContentsOf([(escape(key), escape("\(value)"))])
-        }
-        
-        return components
-    }
-    
-    private func multipartInfo(body: [String: AnyObject]? = nil) -> (fileContents: NSData, fileName: String, fieldName: String, mimeType: String)? {
-        if let fileContents = body?["$fileContents"] as? NSData {
-            if let fileName = body?["$fileName"] as? String, fieldName = body?["$fieldName"] as? String, mimeType = body?["$mimeType"] as? String {
+    private func extractMultipartInfoFrom(_ body: Alamofire.Parameters? = nil) -> (fileContents: Data, fileName: String, fieldName: String, mimeType: String)? {
+        if let fileContents = body?["$fileContents"] as? Data {
+            if let fileName = body?["$fileName"] as? String, let fieldName = body?["$fieldName"] as? String, let mimeType = body?["$mimeType"] as? String {
                 return (fileContents, fileName, fieldName, mimeType)
             }
         }
         return nil
     }
     
-    private func validateRequestBody(body: [String: AnyObject]? = nil) -> Bool {
-        if let _ = body?["$fileContents"] as? NSData {
+    private func validateUploadRequest(_ body: Alamofire.Parameters? = nil) -> Bool {
+        if let _ = body?["$fileContents"] as? Data {
             // uploading file, make sure all required parameters are specified as well
-            if let _ = body?["$fileName"] as? String, _ = body?["$fieldName"] as? String, _ = body?["$mimeType"] as? String {
+            if let _ = body?["$fileName"] as? String, let _ = body?["$fieldName"] as? String, let _ = body?["$mimeType"] as? String {
                 return true
             } else {
                 return false
@@ -309,303 +311,416 @@ public class Geocore: NSObject {
         }
     }
     
-    private func buildQueryParameter(mutableURLRequest: NSMutableURLRequest, parameters: [String: AnyObject]?) -> NSURL? {
-        
-        if let someParameters = parameters {
-            // from Alamofire internal
-            func query(parameters: [String: AnyObject]) -> String {
-                var components: [(String, String)] = []
-                for key in Array(parameters.keys).sort(<) {
-                    let value = parameters[key]!
-                    components += queryComponents(key, value)
-                }
-                
-                return (components.map { "\($0)=\($1)" } as [String]).joinWithSeparator("&")
-            }
-            
-            // since we have both non-nil parameters and body,
-            // the parameters should go to URL query parameters,
-            // and the body should go to HTTP body
-            if let URLComponents = NSURLComponents(URL: mutableURLRequest.URL!, resolvingAgainstBaseURL: false) {
-                URLComponents.percentEncodedQuery = (URLComponents.percentEncodedQuery != nil ? URLComponents.percentEncodedQuery! + "&" : "") + query(someParameters)
-                return URLComponents.URL
-            }
-        }
-        
-        return nil
-    }
-    
-    /**
-        Build and customize Alamofire request with Geocore token and optional parameter/body specification.
-    
-        :param: method Alamofire Method enum representing HTTP request method
-        :param: parameters parameters to be used as URL query parameters (for GET, DELETE) or POST parameters in the body except is body parameter is not nil. For POST, ff body parameter is not nil it will be encoded as POST body (JSON or multipart) and parameters will become URL query parameters.
-        :param: body POST JSON or multipart content. For multipart content, the body will have to contain following key-values: ("$fileContents" => NSData), ("$fileName" => String), ("$fieldName" => String), ("$mimeType" => String)
-    
-        :returns: function that given a URL path will generate appropriate Alamofire Request object.
-    */
-    private func requestBuilder(method: Alamofire.Method, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> ((String) -> Request)? {
-        
-        if !self.validateRequestBody(body) {
-            return nil
-        }
-        
-        if let token = self.token {
-            // if token is available (user already logged-in), use NSMutableURLRequest to customize HTTP header
-            return { (path: String) -> Request in
-                
-                if let multipartInfo = self.multipartInfo(body) {
-                    return Alamofire.request(
-                        Alamofire.ParameterEncoding.URL.encode(
-                            self.multipartURLRequest(method,
-                                path: path,
-                                token: token,
-                                fieldName: multipartInfo.fieldName,
-                                fileName: multipartInfo.fileName,
-                                mimeType: multipartInfo.mimeType,
-                                fileContents: multipartInfo.fileContents),
-                            parameters: parameters).0)
-                } else {
-                    
-                    // NSMutableURLRequest with customized HTTP header
-                    // NOTE: this logic assuems that after logged-in ALL POSTs will POST JSON as body
-                    // see-> self.parameterEncoding(method)
-                    
-                    let mutableURLRequest = self.mutableURLRequest(method, path: path, token: token)
-                    let parameterEncoding = self.parameterEncoding(method)
-                    if let someBody = body {
-                        // pass parameters as query parameters, body to be processed by Alamofire
-                        if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
-                            mutableURLRequest.URL = url
-                        }
-                        
-                        if someBody.isEmpty {
-                            switch parameterEncoding {
-                            case .JSON:
-                                mutableURLRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                                mutableURLRequest.HTTPBody = try! NSJSONSerialization.dataWithJSONObject(someBody, options: NSJSONWritingOptions())
-                            default:
-                                break
-                            }
-                        }
-                        
-                        return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: someBody).0)
-                    } else {
-                        // set parameters according to standard Alamofire's encode processing
-                        return Alamofire.request(parameterEncoding.encode(mutableURLRequest, parameters: parameters).0)
-                    }
-                }
-            }
-        } else {
-            if let someBody = body {
-                // no token but with body & parameters separate
-                return { (path: String) -> Request in
-                    let mutableURLRequest = NSMutableURLRequest(URL: NSURL(string: path)!)
-                    mutableURLRequest.HTTPMethod = method.rawValue
-                    if let url = self.buildQueryParameter(mutableURLRequest, parameters: parameters) {
-                        mutableURLRequest.URL = url
-                    }
-                    return Alamofire.request(self.parameterEncoding(method).encode(mutableURLRequest, parameters: someBody).0)
-                }
-            } else {
-                // otherwise do a normal Alamofire request
-                return { (path: String) -> Request in Alamofire.request(method, path, parameters: parameters) }
-            }
-        }
-    }
-    
-    /**
-        The ultimate generic request method.
-    
-        :param: path Path relative to base API URL.
-        :param: requestBuilder Function to be used to create Alamofire request.
-        :param: onSuccess What to do when the server successfully returned a result.
-        :param: onError What to do when there is an error.
-     */
-    private func request(
-            path: String,
-            requestBuilder: (String) -> Request,
-            onSuccess: (JSON) -> Void,
-            onError: (GeocoreError) -> Void) {
-                
-                requestBuilder(self.path(path)!).response { (_, res, optData, optError) -> Void in
-                    if let error = optError {
-                        print("[ERROR] \(error)")
-                        onError(.NetworkError(error: error))
-                    } else if let data = optData {
-                        if let statusCode = res?.statusCode {
-                            switch statusCode {
-                            case 200:
-                                let json = JSON(data: data)
-                                if let status = json["status"].string {
-                                    if status == "success" {
-                                        onSuccess(json["result"])
-                                    } else {
-                                        onError(.ServerError(
-                                            code: json["code"].string ?? "",
-                                            message: json["message"].string ?? ""))
-                                    }
-                                } else {
-                                    onError(.InvalidServerResponse(
-                                        statusCode: GeocoreServerResponse.UnexpectedResponse.rawValue))
-                                }
-                            case 403:
-                                onError(.UnauthorizedAccess)
-                            default:
-                                onError(.InvalidServerResponse(
-                                    statusCode: statusCode))
+    private func buildRequestCompletionHandler(onSuccess: @escaping (JSON) -> Void,
+                                               onError: @escaping (GeocoreError) -> Void) -> ((Alamofire.DataResponse<Data>) -> Void) {
+        return { (response: Alamofire.DataResponse<Data>) -> Void in
+            if let error = response.error {
+                print("[ERROR] \(error)")
+                onError(.networkError(error: error))
+            } else if let statusCode = response.response?.statusCode {
+                switch statusCode {
+                case 200:
+                    if let data = response.data {
+                        let json = JSON(data: data)
+                        if let status = json["status"].string {
+                            if status == "success" {
+                                onSuccess(json["result"])
+                            } else {
+                                onError(.serverError(
+                                    code: json["code"].string ?? "",
+                                    message: json["message"].string ?? ""))
                             }
                         } else {
-                            onError(.InvalidServerResponse(
-                                statusCode: GeocoreServerResponse.Unavailable.rawValue))
+                            onError(.invalidServerResponse(
+                                statusCode: GeocoreServerResponse.unexpectedResponse.rawValue))
                         }
+                    } else {
+                        // shouldn't happen
+                        onError(.invalidServerResponse(
+                            statusCode: GeocoreServerResponse.emptyResponse.rawValue))
                     }
+                case 403:
+                    onError(.unauthorizedAccess)
+                default:
+                    onError(.invalidServerResponse(statusCode: statusCode))
                 }
-    }
-    
-    /**
-        Request resulting a single result of type T.
-     */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder optRequestBuilder: ((String) -> Request)?, callback: (GeocoreResult<T>) -> Void) {
-        if let requestBuilder = optRequestBuilder {
-            self.request(path, requestBuilder: requestBuilder,
-                onSuccess: { json -> Void in callback(GeocoreResult(T(json))) },
-                onError: { error -> Void in callback(.Failure(error)) })
-        } else {
-            callback(.Failure(.InvalidParameter(message: "Unable to build request, likely because of unexpected parameters.")))
+            } else {
+                onError(.invalidServerResponse(
+                    statusCode: GeocoreServerResponse.unavailable.rawValue))
+            }
         }
     }
     
-    /**
-        Request resulting multiple result in an array of objects of type T
-     */
-    func request<T: GeocoreInitializableFromJSON>(path: String, requestBuilder optRequestBuilder: ((String) -> Request)?, callback: (GeocoreResult<[T]>) -> Void) {
-        if let requestBuilder = optRequestBuilder {
-            self.request(path, requestBuilder: requestBuilder,
-                onSuccess: { json -> Void in
+    private func request(
+        _ url: String,
+        method: Alamofire.HTTPMethod,
+        parameters: Alamofire.Parameters?,
+        body: Alamofire.Parameters?,
+        requestCompletionHandler: @escaping (Alamofire.DataResponse<Data>) -> Void) throws {
+        
+        if !validateUploadRequest(body) {
+            // file supposed to be uploaded but file info not provided.
+            throw GeocoreError.invalidParameter(message: "Parameter for file upload incomplete")
+        } else {
+            if let token = self.token {
+                if let multipartInfo = self.extractMultipartInfoFrom(body) {
+                    // multipart request
+                    try Alamofire.upload(
+                        multipartFormData: { multipartFormData in
+                            multipartFormData.append(
+                                multipartInfo.fileContents,
+                                withName: multipartInfo.fieldName,
+                                fileName: multipartInfo.fileName,
+                                mimeType: multipartInfo.mimeType)
+                        },
+                        with: URLRequest(url: url, method: method, headers: [GeocoreConstants.httpHeaderAccessTokenName: token]),
+                        encodingCompletion: { encodingResult in
+                            switch encodingResult {
+                            case .success(let upload, _, _):
+                                upload.responseData(completionHandler: requestCompletionHandler)
+                            case .failure(let encodingError):
+                                print(encodingError)
+                            }
+                        })
+                } else {
+                    // Alamofire request with token
+                    try Alamofire.SessionManager.default
+                        .requestWithParametersAndBody(
+                            url,
+                            method: method,
+                            parameters: parameters,
+                            body: body,
+                            headers: [GeocoreConstants.httpHeaderAccessTokenName: token])
+                        .responseData(completionHandler: requestCompletionHandler)
+                }
+            } else {
+                // Alamofire request with no token
+                try Alamofire.SessionManager.default
+                    .requestWithParametersAndBody(
+                        url,
+                        method: method,
+                        parameters: parameters,
+                        body: body)
+                    .responseData(completionHandler: requestCompletionHandler)
+            }
+        }
+    }
+    
+    
+    /// Generic request
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - method: HTTP method
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    ///   - onSuccess: handler called when request is successful
+    ///   - onError: handler called when there is an error
+    private func request(
+        _ path: String,
+        method: Alamofire.HTTPMethod,
+        parameters: Alamofire.Parameters?,
+        body: Alamofire.Parameters?,
+        onSuccess: @escaping (JSON) -> Void,
+        onError: @escaping (GeocoreError) -> Void) {
+        do {
+            try request(
+                buildUrl(path),
+                method: method,
+                parameters: parameters,
+                body: body,
+                requestCompletionHandler: buildRequestCompletionHandler(onSuccess: onSuccess, onError: onError))
+        } catch {
+            onError(.otherError(error: error))
+        }
+    }
+    
+    /// Request resulting a single result of type T.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - method: HTTP method
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    ///   - callback: callback to be called when there is a single result of type T or error.
+    private func request<T: GeocoreInitializableFromJSON>(
+        path: String,
+        method: Alamofire.HTTPMethod,
+        parameters: Alamofire.Parameters?,
+        body: Alamofire.Parameters?,
+        callback: @escaping (GeocoreResult<T>) -> Void) {
+        request(path,
+                method: method,
+                parameters: parameters,
+                body: body,
+                onSuccess: { json in callback(GeocoreResult(T(json))) },
+                onError: { error in callback(.failure(error)) })
+    }
+    
+    /// Request resulting multiple result in an array of objects of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - method: HTTP method
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    ///   - callback: callback to be called when there is an array of result of type T or error.
+    private func request<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        method: Alamofire.HTTPMethod,
+        parameters: Alamofire.Parameters?,
+        body: Alamofire.Parameters?,
+        callback: @escaping (GeocoreResult<[T]>) -> Void) {
+        request(path,
+                method: method,
+                parameters: parameters,
+                body: body,
+                onSuccess: { json in
                     if let result = json.array {
                         callback(GeocoreResult(result.map { T($0) }))
                     } else {
                         callback(GeocoreResult([]))
                     }
                 },
-                onError: { error -> Void in callback(.Failure(error)) })
-        } else {
-            callback(.Failure(.InvalidParameter(message: "Unable to build request, likely because of unexpected parameters.")))
-        }
+                onError: { error in callback(.failure(error)) })
     }
     
     // MARK: HTTP methods: GET, POST, DELETE, PUT
     
-    /**
-        Do an HTTP GET request expecting one result of type T
-     */
-    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.GET, parameters: parameters), callback: callback)
+    
+    /// Do an HTTP GET request expecting one result of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - callback: callback to be called when there is a single result of type T or error.
+    public func GET<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        callback: @escaping (GeocoreResult<T>) -> Void) {
+        request(path: path, method: .get, parameters: parameters, body: nil, callback: callback)
     }
     
-    /**
-        Promise a single result of type T from an HTTP GET request.
-     */
-    func promisedGET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<T> {
+    /// Promise a single result of type T from an HTTP GET request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    /// - Returns: Promise for a single result of type T.
+    public func promisedGET<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil) -> Promise<T> {
         return Promise { (fulfill, reject) in
-            self.GET(path, parameters: parameters) { (result: GeocoreResult<T>) -> Void in
-                result.propagateTo(fulfill, reject: reject)
+            self.GET(path, parameters: parameters) {
+                result in result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
-    /**
-        Do an HTTP GET request expecting an multiple result in an array of objects of type T
-     */
-    func GET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<[T]>) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.GET, parameters: parameters), callback: callback)
+    /// Do an HTTP GET request expecting an multiple result in an array of objects of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - callback: callback to be called when there is an array of multiple result of type T or error.
+    func GET<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        callback: @escaping (GeocoreResult<[T]>) -> Void) {
+        request(path, method: .get, parameters: parameters, body: nil, callback: callback)
     }
     
-    /**
-        Promise multiple result of type T from an HTTP GET request.
-     */
-    func promisedGET<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<[T]> {
+    /// Promise multiple result of type T from an HTTP GET request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    /// - Returns: Promise for a multiple result of type T.
+    func promisedGET<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil) -> Promise<[T]> {
         return Promise { (fulfill, reject) in
-            self.GET(path, parameters: parameters) { (result: GeocoreResult<[T]>) -> Void in
-                result.propagateTo(fulfill, reject: reject)
+            self.GET(path, parameters: parameters) {
+                result in result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
-    /**
-        Do an HTTP POST request expecting one result of type T
-     */
-    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
+    /// Do an HTTP POST request expecting one result of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    ///   - callback: callback to be called when there is a single result of type T or error.
+    func POST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        body: Alamofire.Parameters? = nil,
+        callback: @escaping (GeocoreResult<T>) -> Void) {
+        request(path: path, method: .post, parameters: parameters, body: body, callback: callback)
+    }
+    
+    /// Do an HTTP POST request expecting an multiple result in an array of objects of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    ///   - callback: callback to be called when there is an array of multiple result of type T or error.
+    func POST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        body: Alamofire.Parameters? = nil,
+        callback: @escaping (GeocoreResult<[T]>) -> Void) {
+        request(path, method: .post, parameters: parameters, body: body, callback: callback)
+    }
+    
+    /// Do an HTTP POST file upload expecting one result of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - fieldName: Uploaded data field name
+    ///   - fileName: Uploaded data file name
+    ///   - mimeType: Uploaded data MIME type
+    ///   - fileContents: Data to be uploaded
+    ///   - callback: callback to be called when there is a single result of type T or error.
+    func uploadPOST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        fileContents: Data,
+        callback: @escaping (GeocoreResult<T>) -> Void) {
+        POST(path,
+            parameters: parameters,
+            body: [
+                "$fileContents": fileContents,
+                "$fileName": fileName,
+                "$fieldName": fieldName,
+                "$mimeType": mimeType],
+            callback: callback)
     }
     
     /**
-        Do an HTTP POST request expecting an multiple result in an array of objects of type T
+     Promise a single result of type T from an HTTP POST request.
      */
-    func POST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil, callback: (GeocoreResult<[T]>) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.POST, parameters: parameters, body: body), callback: callback)
-    }
     
-    func uploadPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, fieldName: String, fileName: String, mimeType: String, fileContents: NSData, callback: (GeocoreResult<T>) -> Void) {
-        self.POST(path, parameters: parameters, body: ["$fileContents": fileContents, "$fileName": fileName, "$fieldName": fieldName, "$mimeType": mimeType], callback: callback)
-    }
     
-    /**
-        Promise a single result of type T from an HTTP POST request.
-     */
-    func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<T> {
+    
+    /// Promise a single result of type T from an HTTP POST request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    /// - Returns: Promise for a single result of type T.
+    func promisedPOST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        body: Alamofire.Parameters? = nil) -> Promise<T> {
         return Promise { (fulfill, reject) in
-            self.POST(path, parameters: parameters, body: body) { (result: GeocoreResult<T>) -> Void in
-                result.propagateTo(fulfill, reject: reject)
+            self.POST(path, parameters: parameters, body: body) { result in
+                result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
-    /**
-     Promise multiple results of type T from an HTTP POST request.
-     */
-    func promisedPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, body: [String: AnyObject]? = nil) -> Promise<[T]> {
+    /// Promise multiple results of type T from an HTTP POST request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - body: HTTP body
+    /// - Returns: Promise for a multiple result of type T.
+    func promisedPOST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        body: Alamofire.Parameters? = nil) -> Promise<[T]> {
         return Promise { (fulfill, reject) in
-            self.POST(path, parameters: parameters, body: body) { (result: GeocoreResult<[T]>) -> Void in
-                result.propagateTo(fulfill, reject: reject)
+            self.POST(path, parameters: parameters, body: body) { result in
+                result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
-    func promisedUploadPOST<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, fieldName: String, fileName: String, mimeType: String, fileContents: NSData) -> Promise<T> {
+    
+    /// Promise one result of type T from an file upload request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - fieldName: Uploaded data field name
+    ///   - fileName: Uploaded data file name
+    ///   - mimeType: Uploaded data MIME type
+    ///   - fileContents: Data to be uploaded
+    /// - Returns: Promise for a single result of type T.
+    func promisedUploadPOST<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        fileContents: Data) -> Promise<T> {
         return self.promisedPOST(path, parameters: parameters, body: ["$fileContents": fileContents, "$fileName": fileName, "$fieldName": fieldName, "$mimeType": mimeType])
     }
     
-    /**
-        Do an HTTP DELETE request expecting one result of type T
-     */
-    func DELETE<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil, callback: (GeocoreResult<T>) -> Void) {
-        self.request(path, requestBuilder: self.requestBuilder(.DELETE, parameters: parameters), callback: callback)
+    /// Do an HTTP DELETE request expecting one result of type T
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    ///   - callback: callback to be called when there is a single result of type T or error.
+    func DELETE<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil,
+        callback: @escaping (GeocoreResult<T>) -> Void) {
+        request(path: path, method: .delete, parameters: parameters, body: nil, callback: callback)
     }
     
-    /**
-        Promise a single result of type T from an HTTP DELETE request.
-     */
-    func promisedDELETE<T: GeocoreInitializableFromJSON>(path: String, parameters: [String: AnyObject]? = nil) -> Promise<T> {
+    /// Promise a single result of type T from an HTTP DELETE request.
+    ///
+    /// - Parameters:
+    ///   - path: Path relative to base API URL.
+    ///   - parameters: URL query parameters
+    /// - Returns: Promise for a single result of type T.
+    func promisedDELETE<T: GeocoreInitializableFromJSON>(
+        _ path: String,
+        parameters: Alamofire.Parameters? = nil) -> Promise<T> {
         return Promise { (fulfill, reject) in
-            self.DELETE(path, parameters: parameters) { (result: GeocoreResult<T>) -> Void in
-                result.propagateTo(fulfill, reject: reject)
+            self.DELETE(path, parameters: parameters) { result in
+                result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
-    
+
     // MARK: User management methods (callback version)
     
     /**
-    Login to Geocore with callback.
+     Login to Geocore with callback.
+     
+     - parameter userId:   User's ID to be submitted.
+     - parameter password: Password for authorizing user.
+     - parameter callback: Closure to be called when the token string or an error is returned.
+     */
     
-    - parameter userId:   User's ID to be submitted.
-    - parameter password: Password for authorizing user.
-    - parameter callback: Closure to be called when the token string or an error is returned.
-    */
-    public func login(userId: String, password: String, alternateIdIndex: Int = 0, callback:(GeocoreResult<String>) -> Void) {
-        var params = ["id": userId, "password": password, "project_id": self.projectId!]
+    
+    /// Login to Geocore with callback.
+    ///
+    /// - Parameters:
+    ///   - userId: User's ID to be submitted.
+    ///   - password: Password for authorizing user.
+    ///   - alternateIdIndex: alternate ID
+    ///   - callback: Closure to be called when the token string or an error is returned.
+    public func login(
+        userId: String,
+        password: String,
+        alternateIdIndex: Int = 0,
+        callback: @escaping (GeocoreResult<String>) -> Void) {
+        
+        var params: Alamofire.Parameters = ["id": userId, "password": password, "project_id": self.projectId!]
         if alternateIdIndex > 0 {
             params["alt"] = String(alternateIdIndex)
         }
@@ -613,87 +728,93 @@ public class Geocore: NSObject {
         // make sure we're logged out, otherwise the logic in requestBuilder will break!
         self.logout()
         
-        self.POST("/auth", parameters: params) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
+        POST("/auth", parameters: params, body: nil) { (result: GeocoreResult<GeocoreGenericResult>) -> Void in
             switch result {
-            case .Success(let value):
+            case .success(let value):
                 self.token = value.json["token"].string
                 if let token = self.token {
                     self.userId = userId
                     callback(GeocoreResult(token))
                 } else {
-                    callback(.Failure(GeocoreError.InvalidState))
+                    callback(.failure(GeocoreError.invalidState))
                 }
-            case .Failure(let error):
-                callback(.Failure(error))
+            case .failure(let error):
+                callback(.failure(error))
             }
         }
     }
     
-    public func loginWithDefaultUser(callback:(GeocoreResult<String>) -> Void) {
+    public func loginWithDefaultUser(_ callback: @escaping (GeocoreResult<String>) -> Void) {
         // login using default id & password
-        self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword(), alternateIdIndex: 0) { result in
+        self.login(userId: GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword(), alternateIdIndex: 0) { result in
             switch result {
-            case .Success(_):
+            case .success(_):
                 callback(result)
-            case .Failure(let error):
+            case .failure(let error):
                 // oops! try to register first
                 switch error {
-                case .ServerError(let code, _):
+                case .serverError(let code, _):
                     if code == "Auth.0001" {
                         // not registered, register the default user first
-                        GeocoreUserOperation().register(GeocoreUser.defaultUser(), callback: { result in
+                        GeocoreUserOperation().register(user: GeocoreUser.defaultUser(), callback: { result in
                             switch result {
-                            case .Success(_):
+                            case .success(_):
                                 // successfully registered, now login again
-                                self.login(GeocoreUser.defaultId(), password: GeocoreUser.defaultPassword(), alternateIdIndex: 0) { result in
-                                    callback(result)
-                                }
-                            case .Failure(let error):
-                                callback(.Failure(error))
+                                self.login(
+                                    userId: GeocoreUser.defaultId(),
+                                    password: GeocoreUser.defaultPassword(),
+                                    alternateIdIndex: 0) { result in
+                                        callback(result)
+                                    }
+                            case .failure(let error):
+                                callback(.failure(error))
                             }
                         });
                     } else {
                         // unexpected error
-                        callback(.Failure(error))
+                        callback(.failure(error))
                     }
                 default:
                     // unexpected error
-                    callback(.Failure(error))
+                    callback(.failure(error))
                 }
             }
         }
     }
+
     
     // MARK: User management methods (promise version)
     
-    /**
-        Login to Geocore with promise.
-    
-        :param: userId   User's ID to be submitted.
-        :param: password Password for authorizing user.
-    
-        :returns: Promise for Geocore Access Token (as String).
-     */
+    /// Promise to login to Geocore.
+    ///
+    /// - Parameters:
+    ///   - userId: User's ID to be submitted.
+    ///   - password: Password for authorizing user.
+    ///   - alternateIdIndex: alternate ID
+    /// - Returns: Promise for token when login is successful.
     public func login(userId: String, password: String, alternateIdIndex: Int = 0) -> Promise<String> {
-        return Promise { (fulfill, reject) in
-            self.login(userId, password: password, alternateIdIndex: alternateIdIndex) { result in
-                result.propagateTo(fulfill, reject: reject)
+            return Promise { (fulfill, reject) in
+            self.login(userId: userId, password: password, alternateIdIndex: alternateIdIndex) { result in
+                result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
+    /// Promise to login to Geocore with default user.
+    ///
+    /// - Returns: Promise for token when login is successful.
     public func loginWithDefaultUser() -> Promise<String> {
         return Promise { (fulfill, reject) in
             self.loginWithDefaultUser { result in
-                result.propagateTo(fulfill, reject: reject)
+                result.propagate(toFulfillment: fulfill, rejection: reject)
             }
         }
     }
     
+    /// Logout from Geocore.
     public func logout() {
         self.token = nil
         self.userId = nil
     }
     
 }
-
