@@ -167,6 +167,37 @@ open class GeocoreTaggable: GeocoreObject {
     
 }
 
+open class GeocoreTagQuery: GeocoreObjectQuery {
+    
+    private(set) open var idPrefix: String?
+    
+    open func with(idPrefix: String) -> Self {
+        self.idPrefix = idPrefix
+        return self
+    }
+    
+    open override func buildQueryParameters() -> Alamofire.Parameters {
+        var dict = super.buildQueryParameters()
+        if let idPrefix = self.idPrefix {
+            dict["id_prefix"] = idPrefix
+        }
+        return dict
+    }
+    
+    open func get() -> Promise<GeocoreTag> {
+        return self.get(forService: "/tags")
+    }
+    
+    open class func get(_ id: String) -> Promise<GeocoreTag> {
+        return GeocoreTagQuery().with(id: id).get()
+    }
+    
+    open func all() -> Promise<[GeocoreTag]> {
+        return self.all(forService: "/tags")
+    }
+    
+}
+
 open class GeocoreTag: GeocoreObject {
     
     open var type: GeocoreTagType?

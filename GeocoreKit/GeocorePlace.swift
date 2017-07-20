@@ -101,7 +101,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
     }
     
     open class func get(_ id: String) -> Promise<GeocorePlace> {
-        return GeocorePlaceQuery().with(id: id).get();
+        return GeocorePlaceQuery().with(id: id).get()
     }
     
     open func all() -> Promise<[GeocorePlace]> {
