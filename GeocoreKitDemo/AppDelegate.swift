@@ -27,6 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         
+        /*
         Geocore.sharedInstance
             .setup(baseURL: GEOCORE_BASEURL, projectId: GEOCORE_PROJECTID)
             .login(userId: GEOCORE_USERID, password: GEOCORE_USERPASSWORD)
@@ -66,6 +67,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .catch { error in
                 print("--- Cannot fulfill promise because of : \(error)")
             }
+        */
         
         /*
         Geocore.sharedInstance
