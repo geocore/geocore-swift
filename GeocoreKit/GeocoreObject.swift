@@ -202,13 +202,13 @@ open class GeocoreObjectQuery: GeocoreObjectOperation {
     open func all<T: GeocoreInitializableFromJSON>(forService: String) -> Promise<[T]> {
         if let customDataKey = self.customDataKey, let customDataValue = self.customDataValue {
             // custom data query
-            return Geocore.sharedInstance.promisedGET(buildPath(forService: "/objs", withSubPath: "/customData/\(customDataKey)/\(customDataValue)")!)
+            return Geocore.sharedInstance.promisedGET("/objs/customData/\(customDataKey)/\(customDataValue)")
         } else {
             return Geocore.sharedInstance.promisedGET(buildPath(forService: forService), parameters: buildQueryParameters())
         }
     }
     
-    open func all() -> Promise<[GeocoreObject]> {
+    open func allObjects() -> Promise<[GeocoreObject]> {
         return all(forService: "/objs")
     }
     
