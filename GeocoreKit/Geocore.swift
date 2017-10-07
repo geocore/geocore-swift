@@ -239,7 +239,7 @@ public enum GeocoreResult<T> {
         }
     }
     
-    public func propagate(toFulfillment fulfill: (T) -> Void, rejection reject: (Error) -> Void) -> Void {
+    public func propagate(toFulfillment fulfill: @escaping (T) -> Void, rejection reject: @escaping (Error) -> Void) -> Void {
         switch self {
         case .success(let value):
             fulfill(value)

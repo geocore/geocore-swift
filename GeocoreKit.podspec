@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   #
 
   s.name         = "GeocoreKit"
-  s.version      = "0.4.3"
+  s.version      = "0.5.0"
   s.summary      = "Geocore Swift Client API"
 
   s.description  = <<-DESC
