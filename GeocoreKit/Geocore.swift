@@ -321,14 +321,18 @@ open class Geocore {
                 switch statusCode {
                 case 200:
                     if let data = response.data {
-                        let json = JSON(data: data)
-                        if let status = json["status"].string {
-                            if status == "success" {
-                                onSuccess(json["result"])
+                        if let json = try? JSON(data: data) {
+                            if let status = json["status"].string {
+                                if status == "success" {
+                                    onSuccess(json["result"])
+                                } else {
+                                    onError(.serverError(
+                                        code: json["code"].string ?? "",
+                                        message: json["message"].string ?? ""))
+                                }
                             } else {
-                                onError(.serverError(
-                                    code: json["code"].string ?? "",
-                                    message: json["message"].string ?? ""))
+                                onError(.invalidServerResponse(
+                                    statusCode: GeocoreServerResponse.unexpectedResponse.rawValue))
                             }
                         } else {
                             onError(.invalidServerResponse(

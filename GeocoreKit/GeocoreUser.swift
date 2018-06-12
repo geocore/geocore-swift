@@ -463,8 +463,12 @@ open class GeocoreUserEventOperation: GeocoreRelationshipOperation {
     open func save() -> Promise<GeocoreUserEvent> {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             if let customData = self.customData {
-                return Geocore.sharedInstance.promisedPOST(buildPath(forService: "/users", withSubPath: "/events"),
-                    parameters: nil, body: customData.filter{ $1 != nil }.map{ ($0, $1!) })
+                return Geocore.sharedInstance.promisedPOST(
+                    buildPath(
+                        forService: "/users",
+                        withSubPath: "/events"),
+                    parameters: nil,
+                    body: customData.filter{ $0.value != nil }.map{ ($0, $1!) })
             } else {
                 return Geocore.sharedInstance.promisedPOST(buildPath(forService: "/users", withSubPath: "/events"),
                     parameters: nil, body: [String: Any]())
@@ -626,7 +630,7 @@ open class GeocoreUserPlaceOperation: GeocoreRelationshipOperation {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             if let customData = self.customData {
                 return Geocore.sharedInstance.promisedPOST(buildPath(forService: "/users", withSubPath: "/places"),
-                    parameters: nil, body: customData.filter{ $1 != nil }.map{ ($0, $1!) })
+                    parameters: nil, body: customData.filter{ $0.value != nil }.map{ ($0, $1!) })
             } else {
                 return Geocore.sharedInstance.promisedPOST(buildPath(forService: "/users", withSubPath: "/places"),
                     parameters: nil, body: [String: AnyObject]())

@@ -705,7 +705,7 @@ open class GeocoreObject: GeocoreIdentifiable {
         if let id = self.id { dict["id"] = id }
         if let name = self.name { dict["name"] = name }
         if let desc = self.desc { dict["description"] = desc }
-        if let customData = self.customData { dict["customData"] = customData.filter{ $1 != nil }.map{ ($0, $1!) } }
+        if let customData = self.customData { dict["customData"] = customData.filter{ $0.value != nil }.map{ ($0, $1!) } }
         if let jsonData = self.jsonData { dict["jsonData"] = jsonData.rawString() }
         return dict
     }
@@ -846,7 +846,7 @@ open class GeocoreRelationship: GeocoreInitializableFromJSON, GeocoreSerializabl
     open func asDictionary() -> [String: Any] {
         // wish this can be automatic
         var dict = [String: Any]()
-        if let customData = self.customData { dict["customData"] = customData.filter{ $1 != nil }.map{ ($0, $1!) } }
+        if let customData = self.customData { dict["customData"] = customData.filter{ $0.value != nil }.map{ ($0, $1!) } }
         return dict
     }
 
