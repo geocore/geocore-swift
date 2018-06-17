@@ -65,7 +65,7 @@ Pod::Spec.new do |s|
   # s.platform     = :ios, "5.0"
 
   #  When using multiple platforms
-  s.ios.deployment_target = "8.3"
+  s.ios.deployment_target = "9.0"
   s.osx.deployment_target = "10.10"
 
 
@@ -127,9 +127,9 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   # s.xcconfig = { "HEADER_SEARCH_PATHS" => "$(SDKROOT)/usr/include/libxml2" }
-  s.dependency "PromiseKit"
-  s.dependency "Alamofire"
-  s.dependency "AlamofireImage"
-  s.dependency "SwiftyJSON"
+  s.dependency 'PromiseKit', '~> 4.5'
+  s.dependency 'Alamofire', '~> 4.7'
+  s.dependency 'AlamofireImage', '~> 3.3'
+  s.dependency 'SwiftyJSON', '~> 4.1'
 
 end

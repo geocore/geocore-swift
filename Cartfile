@@ -1,4 +1,4 @@
-github "Alamofire/Alamofire" ~> 4.3
-github "Alamofire/AlamofireImage" ~> 3.1
-github "SwiftyJSON/SwiftyJSON"
-github "mxcl/PromiseKit" ~> 4.0
+github "Alamofire/Alamofire" ~> 4.7
+github "Alamofire/AlamofireImage" ~> 3.3
+github "SwiftyJSON/SwiftyJSON" ~> 4.1
+github "mxcl/PromiseKit" ~> 4.5
