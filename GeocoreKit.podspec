@@ -65,8 +65,8 @@ Pod::Spec.new do |s|
   # s.platform     = :ios, "5.0"
 
   #  When using multiple platforms
-  s.ios.deployment_target = "9.0"
-  s.osx.deployment_target = "10.10"
+  s.ios.deployment_target = "8.0"
+  s.osx.deployment_target = "10.11"
 
 
   # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -89,6 +89,8 @@ Pod::Spec.new do |s|
   s.source_files  = "GeocoreKit", "GeocoreKit/**/*.{swift,h,m}"
   # s.exclude_files = "Classes/Exclude"
   # s.public_header_files = "Classes/**/*.h"
+
+  s.pod_target_xcconfig = { 'SWIFT_VERSION' => '4.0' }
 
 
   # ――― Resources ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #

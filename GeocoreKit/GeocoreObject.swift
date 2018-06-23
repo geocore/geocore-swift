@@ -307,7 +307,7 @@ open class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                 // for now just replace https with http
                 var finalUrl = url
                 if (url.hasPrefix("https")) {
-                    finalUrl = "http\(url.substring(from: url.index(url.startIndex, offsetBy: 5)))"
+                    finalUrl = "http\(url[url.index(url.startIndex, offsetBy: 5)...])"
                 }
                 //print("url -> \(finalUrl)")
                 return Promise(value: finalUrl)
@@ -325,7 +325,7 @@ open class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                     fulfill(transform(self.id, url))
                 }
                 .catch { error in
-                    print("error getting url for id -> \(self.id)")
+                    print("error getting url for id -> \(self.id ?? "nil")")
                     reject(error)
                 }
         }
@@ -338,7 +338,7 @@ open class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                     fulfill(transform(self.id, self.key, url))
                 }
                 .catch { error in
-                    print("error getting url for id -> \(self.id), \(self.key)")
+                    print("error getting url for id -> \(self.id ?? "nil"), \(self.key ?? "nil")")
                     reject(error)
             }
         }
@@ -375,7 +375,7 @@ open class GeocoreObjectBinaryOperation: GeocoreObjectOperation {
                         // for now just replace https with http
                         var finalUrl = url
                         if (url.hasPrefix("https")) {
-                            finalUrl = "http\(url.substring(from: url.index(url.startIndex, offsetBy: 5)))"
+                            finalUrl = "http\(url[url.index(url.startIndex, offsetBy: 5)...])"
                         }
                         //print("url -> \(finalUrl)")
                         Alamofire.request(finalUrl).responseImage { response in
@@ -538,7 +538,7 @@ open class GeocoreRelationshipBinaryOperation: GeocoreRelationshipOperation {
                 // for now just replace https with http
                 var finalUrl = url
                 if (url.hasPrefix("https")) {
-                    finalUrl = "http\(url.substring(from: url.index(url.startIndex, offsetBy: 5)))"
+                    finalUrl = "http\(url[url.index(url.startIndex, offsetBy: 5)...])"
                 }
                 //print("url -> \(finalUrl)")
                 return Promise(value: finalUrl)
@@ -555,7 +555,7 @@ open class GeocoreRelationshipBinaryOperation: GeocoreRelationshipOperation {
                     fulfill(transform(self.id1, self.id2, url))
                 }
                 .catch { error in
-                    print("error getting url for id -> \(self.id1), \(self.id2)")
+                    print("error getting url for id -> \(self.id1 ?? "nil"), \(self.id2 ?? "nil")")
                     reject(error)
             }
         }
@@ -592,7 +592,7 @@ open class GeocoreRelationshipBinaryOperation: GeocoreRelationshipOperation {
                         // for now just replace https with http
                         var finalUrl = url
                         if (url.hasPrefix("https")) {
-                            finalUrl = "http\(url.substring(from: url.index(url.startIndex, offsetBy: 5)))"
+                            finalUrl = "http\(url[url.index(url.startIndex, offsetBy: 5)...])"
                         }
                         //print("url -> \(finalUrl)")
                         Alamofire.request(finalUrl).responseImage { response in

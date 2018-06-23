@@ -246,7 +246,7 @@ open class GeocoreUser: GeocoreTaggable {
         if let projectId = Geocore.sharedInstance.projectId {
             if projectId.hasPrefix("PRO") {
                 // user ID pattern: USE-[project_suffix]-[user_id_suffix]
-                return "USE\(projectId.substring(from: projectId.index(projectId.startIndex, offsetBy: 3)))-\(suffix)"
+                return "USE\(projectId[projectId.index(projectId.startIndex, offsetBy: 3)...])-\(suffix)"
             } else {
                 return suffix
             }
@@ -279,7 +279,7 @@ open class GeocoreUser: GeocoreTaggable {
     }
     
     open class func defaultPassword() -> String {
-        return String(defaultId().characters.reversed())
+        return String(defaultId().reversed())
     }
     
     open func setFacebookUser(_ id: String, name: String) {
