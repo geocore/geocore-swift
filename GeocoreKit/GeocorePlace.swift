@@ -122,7 +122,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["lon"] = centerLongitude as AnyObject?
             return Geocore.sharedInstance.promisedGET("/places/search/nearest", parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
         }
     }
     
@@ -133,7 +133,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["lon"] = centerLongitude as AnyObject?
             return Geocore.sharedInstance.promisedGET("/places/search/smallestbounds", parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
         }
     }
     
@@ -145,7 +145,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["radius"] = radius as AnyObject?
             return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon, radius")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon, radius")) }
         }
     }
     
@@ -166,7 +166,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
             dict["max_lon"] = maxlon as AnyObject?
             return Geocore.sharedInstance.promisedGET(withPath, parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting min/max lat-lon")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting min/max lat-lon")) }
         }
     }
     
@@ -182,7 +182,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/places", withSubPath: "/events") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -190,7 +190,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/places", withSubPath: "/events/relationships") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -200,7 +200,7 @@ open class GeocorePlaceQuery: GeocoreTaggableQuery {
             if let validItems = self.validItems { if validItems { dict["valid_only"] = "true" as AnyObject? } }
             return Geocore.sharedInstance.promisedGET(path, parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -257,13 +257,13 @@ open class GeocorePlace: GeocoreTaggable {
     
     open func events() -> Promise<[GeocoreEvent]> {
         if let prefetchedEvents = self.prefetchedEvents {
-            return Promise { fulfill, reject in fulfill(prefetchedEvents) }
+            return Promise { $0.fulfill(prefetchedEvents) }
         } else {
             return query()
                 .events()
-                .then { events -> [GeocoreEvent] in
+                .then { events -> Promise<[GeocoreEvent]> in
                     self.prefetchedEvents = events
-                    return events
+                    return .value(events)
                 }
         }
     }
@@ -311,7 +311,7 @@ open class GeocorePlace: GeocoreTaggable {
             }
             return Geocore.sharedInstance.promisedPOST("/places/\(placeId)/checkins", parameters: params, body: checkin.asDictionary())
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     

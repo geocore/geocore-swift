@@ -44,7 +44,7 @@ open class GeocoreItemQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/items", withSubPath: "/events") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     

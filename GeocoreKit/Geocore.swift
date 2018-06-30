@@ -57,7 +57,7 @@ public enum GeocoreServerResponse: Int {
 fileprivate extension Alamofire.URLEncoding {
     
     /// Almost like URLEncoding's encode, except that this will ALWAYS encode the parameters as URL query parameters
-    fileprivate func geocoreEncode(_ urlRequest: URLRequestConvertible, with parameters: Parameters?) throws -> URLRequest {
+    fileprivate func geocoreEncode(_ urlRequest: Alamofire.URLRequestConvertible, with parameters: Parameters?) throws -> URLRequest {
         var urlRequest = try urlRequest.asURLRequest()
         
         guard let parameters = parameters else { return urlRequest }
@@ -514,9 +514,9 @@ open class Geocore {
     public func promisedGET<T: GeocoreInitializableFromJSON>(
         _ path: String,
         parameters: Alamofire.Parameters? = nil) -> Promise<T> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.GET(path, parameters: parameters) {
-                result in result.propagate(toFulfillment: fulfill, rejection: reject)
+                result in result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -543,9 +543,9 @@ open class Geocore {
     func promisedGET<T: GeocoreInitializableFromJSON>(
         _ path: String,
         parameters: Alamofire.Parameters? = nil) -> Promise<[T]> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.GET(path, parameters: parameters) {
-                result in result.propagate(toFulfillment: fulfill, rejection: reject)
+                result in result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -625,9 +625,9 @@ open class Geocore {
         _ path: String,
         parameters: Alamofire.Parameters? = nil,
         body: Alamofire.Parameters? = nil) -> Promise<T> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.POST(path, parameters: parameters, body: body) { result in
-                result.propagate(toFulfillment: fulfill, rejection: reject)
+                result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -643,9 +643,9 @@ open class Geocore {
         _ path: String,
         parameters: Alamofire.Parameters? = nil,
         body: Alamofire.Parameters? = nil) -> Promise<[T]> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.POST(path, parameters: parameters, body: body) { result in
-                result.propagate(toFulfillment: fulfill, rejection: reject)
+                result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -693,9 +693,9 @@ open class Geocore {
     func promisedDELETE<T: GeocoreInitializableFromJSON>(
         _ path: String,
         parameters: Alamofire.Parameters? = nil) -> Promise<T> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.DELETE(path, parameters: parameters) { result in
-                result.propagate(toFulfillment: fulfill, rejection: reject)
+                result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -797,9 +797,9 @@ open class Geocore {
     ///   - alternateIdIndex: alternate ID
     /// - Returns: Promise for token when login is successful.
     public func login(userId: String, password: String, alternateIdIndex: Int = 0) -> Promise<String> {
-            return Promise { (fulfill, reject) in
+            return Promise { seal in
             self.login(userId: userId, password: password, alternateIdIndex: alternateIdIndex) { result in
-                result.propagate(toFulfillment: fulfill, rejection: reject)
+                result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }
@@ -808,9 +808,9 @@ open class Geocore {
     ///
     /// - Returns: Promise for token when login is successful.
     public func loginWithDefaultUser() -> Promise<String> {
-        return Promise { (fulfill, reject) in
+        return Promise { seal in
             self.loginWithDefaultUser { result in
-                result.propagate(toFulfillment: fulfill, rejection: reject)
+                result.propagate(toFulfillment: seal.fulfill, rejection: seal.reject)
             }
         }
     }

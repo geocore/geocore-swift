@@ -109,10 +109,10 @@ open class GeocoreUserTagOperation: GeocoreTaggableOperation {
                 // body cannot be nil, otherwise params will go to body
                 return Geocore.sharedInstance.promisedPOST(path, parameters: params, body: [String: Any]())
             } else {
-                return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+                return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
             }
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting tag parameters")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting tag parameters")) }
         }
     }
     
@@ -143,7 +143,7 @@ open class GeocoreUserQuery: GeocoreTaggableQuery {
         if let userId = self.id {
             return GeocoreUserEventQuery().with(object1Id: userId).all()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -154,7 +154,7 @@ open class GeocoreUserQuery: GeocoreTaggableQuery {
                 .with(object2Id: event.id!)
                 .all()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -162,7 +162,7 @@ open class GeocoreUserQuery: GeocoreTaggableQuery {
         if let userId = self.id {
             return GeocoreUserPlaceQuery().with(object1Id: userId).all()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -173,7 +173,7 @@ open class GeocoreUserQuery: GeocoreTaggableQuery {
                 .with(object2Id: place.id!)
                 .all()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -181,7 +181,7 @@ open class GeocoreUserQuery: GeocoreTaggableQuery {
         if let userId = self.id {
             return GeocoreUserItemQuery().with(object1Id: userId).all()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -382,7 +382,7 @@ open class GeocoreUser: GeocoreTaggable {
         if (tokenUpdated || langUpdated || enabledUpdated) {
             return self.save()
         } else {
-            return Promise { fulfill, reject in fulfill(self) }
+            return Promise { $0.fulfill(self) }
         }
     }
     
@@ -474,7 +474,7 @@ open class GeocoreUserEventOperation: GeocoreRelationshipOperation {
                     parameters: nil, body: [String: Any]())
             }
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -499,7 +499,7 @@ open class GeocoreUserEventOperation: GeocoreRelationshipOperation {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             return Geocore.sharedInstance.promisedDELETE(buildPath(forService: "/users", withSubPath: "/events"))
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -536,7 +536,7 @@ open class GeocoreUserEventQuery: GeocoreRelationshipQuery {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             return Geocore.sharedInstance.promisedGET(self.buildPath(forService: "/users", withSubPath: "/events"))
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -544,7 +544,7 @@ open class GeocoreUserEventQuery: GeocoreRelationshipQuery {
         if self.id1 != nil {
             return Geocore.sharedInstance.promisedGET(super.buildPath(forService: "/users", withSubPath: "/events"))
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -636,7 +636,7 @@ open class GeocoreUserPlaceOperation: GeocoreRelationshipOperation {
                     parameters: nil, body: [String: AnyObject]())
             }
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -649,7 +649,7 @@ open class GeocoreUserPlaceOperation: GeocoreRelationshipOperation {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             return Geocore.sharedInstance.promisedDELETE(buildPath(forService: "/users", withSubPath: "/places"))
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -690,7 +690,7 @@ open class GeocoreUserPlaceQuery: GeocoreRelationshipQuery {
         if self.id1 != nil && id2 != nil && self.relationshipType != nil {
             return Geocore.sharedInstance.promisedGET(self.buildPath(forService: "/users", withSubPath: "/places"))
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids & relationship type")) }
         }
     }
     
@@ -700,7 +700,7 @@ open class GeocoreUserPlaceQuery: GeocoreRelationshipQuery {
             params["output_format"] = "json.relationship"
             return Geocore.sharedInstance.promisedGET(super.buildPath(forService: "/users", withSubPath: "/places"), parameters: params)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -763,7 +763,7 @@ open class GeocoreUserItemOperation: GeocoreRelationshipOperation {
             }
             return Geocore.sharedInstance.promisedPOST("/users/\(id1)/items/\(id2)/amount/\(sign)\(abs(amount))")
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting ids")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting ids")) }
         }
     }
     
@@ -785,7 +785,7 @@ open class GeocoreUserItemQuery: GeocoreRelationshipQuery {
         if self.id1 != nil {
             return Geocore.sharedInstance.promisedGET(super.buildPath(forService: "/users", withSubPath: "/items"), parameters: ["output_format": "json.relationship"])
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     

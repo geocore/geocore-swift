@@ -46,7 +46,7 @@ open class GeocoreFeedOperation: GeocoreObjectOperation {
         if let path = self.buildPath(forService: "/objs", withSubPath: "/feed"), let content = self.content {
             return Geocore.sharedInstance.promisedPOST(path, parameters: self.buildQueryParameters(), body: content)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
         }
     }
     
@@ -114,7 +114,7 @@ open class GeocoreFeedQuery: GeocoreFeedOperation {
         if let path = self.buildPath(forService: "/objs", withSubPath: "/feed") {
             return Geocore.sharedInstance.promisedGET(path, parameters: self.buildQueryParameters())
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -198,7 +198,7 @@ open class GeocoreFeed: GeocoreInitializableFromJSON, GeocoreSerializableToJSON 
             }
             return op.post()
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id, content")) }
         }
     }
     

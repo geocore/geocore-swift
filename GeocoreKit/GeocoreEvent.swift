@@ -34,7 +34,7 @@ open class GeocoreEventQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/events", withSubPath: "/places") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -42,7 +42,7 @@ open class GeocoreEventQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/events", withSubPath: "/tags") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -50,7 +50,7 @@ open class GeocoreEventQuery: GeocoreTaggableQuery {
         if let path = buildPath(forService: "/events", withSubPath: "/places/relationships") {
             return Geocore.sharedInstance.promisedGET(path)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting id")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting id")) }
         }
     }
     
@@ -61,7 +61,7 @@ open class GeocoreEventQuery: GeocoreTaggableQuery {
             dict["lon"] = centerLongitude as AnyObject?
             return Geocore.sharedInstance.promisedGET("/events/search/nearest", parameters: dict)
         } else {
-            return Promise { fulfill, reject in reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
+            return Promise { $0.reject(GeocoreError.invalidParameter(message: "Expecting center lat-lon")) }
         }
     }
     
