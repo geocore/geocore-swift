@@ -98,5 +98,5 @@ GeocorePlaceQuery()
 
 ## Notes
 
-- The framework initial structure was constructed based on [Swift, Frameworks and Cocoapods](https://medium.com/@sorenlind/swift-frameworks-and-cocoapods-9d24f4432ed6).
+- The framework initial structure was constructed based on [Swift, Frameworks and CocoaPods](https://medium.com/@sorenlind/swift-frameworks-and-cocoapods-9d24f4432ed6).
 - This framework is using [Alamofire](https://github.com/Alamofire/Alamofire) for HTTP networking, [SwiftyJSON](https://github.com/SwiftyJSON/SwiftyJSON) for JSON processing, and [PromiseKit](https://github.com/mxcl/PromiseKit) for promises.
